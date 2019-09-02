@@ -1,0 +1,37 @@
+[Unit]
+Description=Exhibitor: Zookeeper supervisor service
+[Service]
+User=dcos_exhibitor
+StandardOutput=journal
+StandardError=journal
+Restart=always
+StartLimitInterval=0
+RestartSec=5
+LimitNOFILE=16384
+# Run in new mount namespace to create custom resolv.conf.
+MountFlags=private
+RuntimeDirectory=dcos_exhibitor
+# On some systems /tmp is mounted as noexec. Make zookeeper write its JNA
+# libraries to a path we control instead. See DCOS-11056
+Environment=JNA_TMP_DIR=/var/lib/dcos/exhibitor/tmp
+Environment=SERVER_JVMFLAGS=-Djna.tmpdir=/var/lib/dcos/exhibitor/tmp
+EnvironmentFile=/opt/mesosphere/environment
+EnvironmentFile=/opt/mesosphere/etc/dns_config
+EnvironmentFile=/opt/mesosphere/etc/exhibitor
+EnvironmentFile=-/opt/mesosphere/etc/exhibitor-extras
+# Execute ExecStartPre directives as root
+PermissionsStartOnly=true
+
+# Assert that the system clock is synced. If it isn't, Exhibitor may fail to join the cluster and require a restart.
+# Use the check-time binary instead of the clock_sync check because it no-ops if clock sync checks have been disabled in
+# cluster config.
+# check_time.env defines the env var that check-time uses to determine whether clock sync checks have been disabled.
+EnvironmentFile=/opt/mesosphere/etc/check_time.env
+ExecStartPre=/opt/mesosphere/bin/check-time
+
+# Run automated certificate bootstrap
+ExecStartPre=$PKG_PATH/bin/bootstrap_exhibitor_tls.py
+# Execute a python script, as root, that sets file permissions to some exact set if those files exist.
+ExecStartPre=$PKG_PATH/bin/set_exhibitor_file_permissions.py
+# Start Exhibitor
+ExecStart=$PKG_PATH/usr/exhibitor/start_exhibitor.py

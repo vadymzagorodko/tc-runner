@@ -1,0 +1,242 @@
+{
+  "Resources": {
+    "PublicAgentLoadBalancer" : {
+      "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties" : {
+        "SecurityGroups": [{ "Ref": "PublicAgentSecurityGroup" }],
+        "Subnets": [{ "Ref": "PublicSubnet" }],
+        "Listeners" : [
+          {
+            "LoadBalancerPort" : "80",
+            "Protocol" : "TCP",
+            "InstancePort" : "80",
+            "InstanceProtocol" : "TCP"
+          },
+          {
+            "LoadBalancerPort" : "443",
+            "Protocol" : "TCP",
+            "InstancePort" : "443",
+            "InstanceProtocol" : "TCP"
+          }],
+        "HealthCheck" : {
+          "Target" : "HTTP:9090/_haproxy_health_check",
+          "HealthyThreshold" : "2",
+          "UnhealthyThreshold" : "2",
+          "Interval" : "5",
+          "Timeout" : "2"
+        }
+      }
+    },
+    "PublicAgentInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [
+          {
+            "Ref": "PublicAgentRole"
+          }
+        ]
+      }
+    },
+    "PublicAgentServerGroup" : {
+      "Type" : "AWS::AutoScaling::AutoScalingGroup",
+      "Properties" : {
+        "LaunchConfigurationName" : { "Ref" : "PublicAgentLaunchConfig" },
+        "MinSize" : { "Ref" : "PublicAgentInstanceCount" },
+        "MaxSize" : { "Ref" : "PublicAgentInstanceCount" },
+        "DesiredCapacity" : { "Ref" : "PublicAgentInstanceCount" },
+        "LoadBalancerNames" : [{ "Ref" : "PublicAgentLoadBalancer" }],
+        "VPCZoneIdentifier" : [{ "Ref" : "PublicSubnet" }],
+        "Tags" : [
+          {
+            "Key" : "role",
+            "Value" : "mesos-public-agent",
+            "PropagateAtLaunch" : "true"
+          }
+        ]
+      },
+      "CreationPolicy" : {
+        "ResourceSignal" : {
+          "Timeout" : { "Fn::FindInMap" : [ "Parameters", "StackCreationTimeout", "default" ] },
+          "Count" : { "Ref" : "PublicAgentInstanceCount" }
+        }
+      }
+    },
+    "PublicAgentLaunchConfig" : {
+      "Type" : "AWS::AutoScaling::LaunchConfiguration",
+      "Properties" : {
+        "KeyName" : { "Ref" : "KeyName" },
+        "ImageId": {
+          "Fn::If": [
+            "UseCustomAMI",
+            {
+              "Ref": "CustomAMI"
+            },
+            {
+              "Fn::FindInMap": [
+                "RegionToAmi",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "{{ os_type }}"
+              ]
+            }
+          ]
+        },
+        "BlockDeviceMappings" : [ { "DeviceName" : "/dev/sdb", "VirtualName" : "ephemeral0" } ],
+        "SecurityGroups" : [ { "Ref" : "PublicAgentSecurityGroup" } ],
+        "IamInstanceProfile" : { "Ref" : "PublicAgentInstanceProfile" },
+        "AssociatePublicIpAddress" : "true",
+        "InstanceType" : { "Ref" : "PublicAgentInstanceType" },
+        "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+          {{ cloud_config }}
+        ]]}}
+      }
+    },
+    "PublicAgentRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version" : "2012-10-17",
+          "Statement": [ {
+            "Effect": "Allow",
+            "Principal": {
+              "Service": [ "ec2.amazonaws.com" ]
+            },
+            "Action": [ "sts:AssumeRole" ]
+          } ]
+        },
+        "Policies": [ {
+          "PolicyName": "Agents",
+          "PolicyDocument": {
+            "Version" : "2012-10-17",
+            "Statement": [
+              {
+                "Resource": [
+                  { "Ref" : "AWS::StackId" },
+                  { "Fn::Join" : ["", [{ "Ref" : "AWS::StackId" }, "/*" ]]}
+                ],
+                "Action": [
+                  "cloudformation:*"
+                ],
+                "Effect": "Allow"
+              },
+              {
+                "Resource": "*",
+                "Action": [
+                  "ec2:CreateTags",
+                  "ec2:DescribeInstances",
+                  "ec2:CreateVolume",
+                  "ec2:DeleteVolume",
+                  "ec2:AttachVolume",
+                  "ec2:DetachVolume",
+                  "ec2:DescribeVolumes",
+                  "ec2:DescribeVolumeStatus",
+                  "ec2:DescribeVolumeAttribute",
+                  "ec2:CreateSnapshot",
+                  "ec2:CopySnapshot",
+                  "ec2:DeleteSnapshot",
+                  "ec2:DescribeSnapshots",
+                  "ec2:DescribeSnapshotAttribute",
+                  "autoscaling:DescribeAutoScalingGroups",
+                  "cloudwatch:PutMetricData"
+                ],
+                "Effect": "Allow"
+              }
+            ]
+          }
+        } ]
+      }
+   }
+},
+  "Outputs": {
+    "PublicAgentDNSName" : {
+      "Description" : "Public Agent DNS Name",
+          "Value" : { "Fn::GetAtt" : [ "PublicAgentLoadBalancer", "DNSName" ]}
+      }
+  },
+  "Parameters": {
+    "PublicAgentInstanceCount": {
+      "Type": "Number",
+      "Default": "5",
+      "Description": "\nSpecify the number of public agent nodes or accept the default."
+    },
+    "KeyName": {
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "Description": "\nSpecify your AWS EC2 Key Pair."
+    },
+    "InternalMasterLoadBalancerDnsName": {
+      "Description" : "\nDNS Name of Internal Load Balancer. Has to be valid for agents to join a running cluster",
+      "Type": "String"
+    },
+    "PublicAgentSecurityGroup": {
+      "Description" : "\nPermissive Security group used by Public Agents",
+      "Type": "String"
+    },
+    "PublicSubnet": {
+      "Description" : "\nSubnet ID for use by all public agent nodes",
+      "Type": "String"
+    },
+    "PublicAgentInstanceType": {
+      "Type": "String",
+      "Default": "m5.xlarge",
+      "Description" : "\nRegion-specific instance type. E.g. m5.xlarge"
+    },
+    "CustomAMI": {
+      "Default": "default",
+      "Type": "String",
+      "Description": "\nExisting AMI in the deploy region which has all DC/OS pre-requisites installed or 'default'",
+      "AllowedPattern": "(default|ami-[a-f0-9]{8})"
+    }
+{% switch oauth_available %}
+{% case "true" %}
+    ,
+    "OAuthEnabled": {
+      "Description": "\nEnable OAuth authentication",
+      "Type": "String",
+      "Default": "true",
+      "AllowedValues": ["true", "false"]
+    }
+{% case "false" %}
+{% endswitch %}
+{% switch licensing_enabled %}
+{% case "true" %}
+    ,
+    "LicenseKey": {
+      "Description": "\nLicense key",
+      "Type": "String",
+      "Default": ""
+    }
+{% case "false" %}
+{% endswitch %}
+  },
+  "Conditions": {
+    "UseCustomAMI": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "CustomAMI"
+            },
+            "default"
+          ]
+        }
+      ]
+    }
+  },
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Metadata": {
+    "DcosImageCommit": "unset",
+    "TemplateGenerationDate": "unset"
+  },
+  "Mappings": {
+    "Parameters": {
+      "StackCreationTimeout": {
+        "default": "PT60M"
+      }
+    },
+    "NATAmi": {{ nat_ami_mapping }},
+    "RegionToAmi": {{ region_to_ami_mapping }}
+  },
+  "Description": "DC/OS AWS Advanced Public Agent Template"
+}

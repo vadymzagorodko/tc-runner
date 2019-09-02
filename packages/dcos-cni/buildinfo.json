@@ -1,0 +1,8 @@
+{
+    "single_source" : {
+      "kind": "git",
+      "git": "https://github.com/dcos/dcos-cni.git",
+      "ref" : "d0f6753109aa1dcf00faf213abaa2b73f10fa530",
+      "ref_origin": "master"
+    }
+}

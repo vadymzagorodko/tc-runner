@@ -1,0 +1,11 @@
+{
+  "requires": ["openssl", "ncurses"],
+  "sources": {
+    "erlang": {
+      "kind": "git",
+      "git": "https://github.com/erlang/otp.git",
+      "ref": "b4fb2e5669acb02697d9a9ab168eb0fbff6f370c",
+      "ref_origin": "maint-22"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=DC/OS Net Watchdog: restarts dcos-net when it is unhealthy
+
+[Service]
+Restart=always
+StartLimitInterval=0
+RestartSec=15
+EnvironmentFile=/opt/mesosphere/environment
+EnvironmentFile=/opt/mesosphere/etc/dcos_net
+Environment=HOME=/opt/mesosphere
+ExecStart=/opt/mesosphere/active/dcos-net/bin/dcos-net-watchdog.py

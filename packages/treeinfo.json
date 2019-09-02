@@ -1,0 +1,11 @@
+{
+  "exclude": [
+    "dcos-launch",
+    "dcos-metrics",
+    "erts",
+    "openstackservice",
+    "spartan"
+  ],
+  "bootstrap_package_list": ["dcos-image"]
+}
+

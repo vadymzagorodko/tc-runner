@@ -1,0 +1,351 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "DC/OS AWS CloudFormation Advanced Master Template",
+  "Metadata": {
+    "DcosImageCommit": "unset",
+    "TemplateGenerationDate": "unset"
+  },
+  "Parameters" : {
+    "KeyName" : {
+      "Description" : "Specify your AWS EC2 Key Pair.",
+      "Type" : "AWS::EC2::KeyPair::KeyName"
+    },
+    "ExhibitorS3Bucket": {
+      "Description" : "\nS3 Bucket resource name. Used by Exhibitor for Zookeeper discovery and coordination. \nSee Exhibitor documentation on 'shared configuration': https://github.com/Netflix/exhibitor/wiki/Shared-Configuration for more information",
+      "Type": "String"
+    },
+    "LbSecurityGroup": {
+      "Description" : "\nLoadbalancer Security Group. Rules allow masters and private agent nodes to communicate.",
+      "Type": "String"
+    },
+    "AdminSecurityGroup": {
+      "Description" : "\nAdmin URL Security Group. Controls Access to the Admin page",
+      "Type": "String"
+    },
+    "PrivateAgentSecurityGroup": {
+      "Description" : "\nSecurity group used by Private Agents, typically with limited access to the outside",
+      "Type": "String"
+    },
+    "PublicAgentSecurityGroup": {
+      "Description" : "\nPermissive Security group used by Public Agents",
+      "Type": "String"
+    },
+    "MasterSecurityGroup": {
+      "Description" : "\nSecurity group used by Master nodes",
+      "Type": "String"
+    },
+    "PublicSubnet": {
+      "Description" : "\nSubnet ID for use by all public agent nodes",
+      "Type": "AWS::EC2::Subnet::Id"
+    },
+    "PrivateSubnet": {
+      "Description" : "\nSubnet ID for use by all private agent nodes",
+      "Type": "String"
+    },
+    "MasterInstanceType": {
+      "Type": "String",
+      "Default": "m5.xlarge",
+      "Description" : "\nRegion-specific instance type. E.g. m5.xlarge"
+    },
+    "CustomAMI": {
+      "Default": "default",
+      "Type": "String",
+      "Description": "\nExisting AMI in the deploy region which has all DC/OS pre-requisites installed or 'default'",
+      "AllowedPattern": "(default|ami-[a-f0-9]{8})"
+    }
+{% switch oauth_available %}
+{% case "true" %}
+    ,
+    "OAuthEnabled": {
+      "Description": "\nEnable OAuth authentication",
+      "Type": "String",
+      "Default": "true",
+      "AllowedValues": ["true", "false"]
+    }
+{% case "false" %}
+{% endswitch %}
+{% switch licensing_enabled %}
+{% case "true" %}
+    ,
+    "LicenseKey": {
+      "Description": "\nLicense key",
+      "Type": "String",
+      "Default": ""
+    }
+{% case "false" %}
+{% endswitch %}
+  },
+  "Conditions": {
+    "UseCustomAMI": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "CustomAMI"
+            },
+            "default"
+          ]
+        }
+      ]
+    },
+    "RegionIsUsGovWest1" : {
+      "Fn::Equals" : [
+        { "Ref" : "AWS::Region" },
+        "us-gov-west-1"
+      ]
+    }
+  },
+  "Mappings": {
+    "RegionToAmi": {{ region_to_ami_mapping }},
+    "Parameters": {
+      "PublicSubnetRange": {
+        "default": "10.0.4.0/22"
+      },
+      "PrivateSubnetRange": {
+        "default": "10.0.0.0/22"
+      },
+      "VPCSubnetRange": {
+        "default": "10.0.0.0/16"
+      },
+      "StackCreationTimeout": {
+          "default": "PT30M"
+      }
+    }
+  },
+  "Resources" : {
+    "MasterRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version" : "2012-10-17",
+          "Statement": [ {
+            "Effect": "Allow",
+            "Principal": {
+              "Service": [ "ec2.amazonaws.com" ]
+            },
+            "Action": [ "sts:AssumeRole" ]
+          } ]
+        },
+        "Path": "/",
+        "Policies": [ {
+          "PolicyName": "root",
+          "PolicyDocument": {
+            "Version" : "2012-10-17",
+            "Statement": [ {
+              "Effect": "Allow",
+              "Action": [
+                "s3:AbortMultipartUpload",
+                "s3:DeleteObject",
+                "s3:GetBucketAcl",
+                "s3:GetBucketPolicy",
+                "s3:GetObject",
+                "s3:GetObjectAcl",
+                "s3:ListBucket",
+                "s3:ListBucketMultipartUploads",
+                "s3:ListMultipartUploadParts",
+                "s3:PutObject",
+                "s3:PutObjectAcl"
+              ],
+              "Resource": [
+                { "Fn::Join" : [
+                  "",
+                  [
+                    { "Fn::If" : [ "RegionIsUsGovWest1", "arn:aws-us-gov:s3:::", "arn:aws:s3:::" ] },
+                    { "Ref" : "ExhibitorS3Bucket" },
+                    "/*"
+                  ]
+                ] },
+                { "Fn::Join" : [
+                  "",
+                  [
+                    { "Fn::If" : [ "RegionIsUsGovWest1", "arn:aws-us-gov:s3:::", "arn:aws:s3:::" ] },
+                    { "Ref" : "ExhibitorS3Bucket" }
+                  ]
+                ] }
+              ]
+            },
+            {
+              "Resource": [
+                  { "Ref" : "AWS::StackId" },
+                  { "Fn::Join" : ["", [{ "Ref" : "AWS::StackId" }, "/*" ]]}
+              ],
+              "Action": [
+                  "cloudformation:*"
+              ],
+              "Effect": "Allow"
+            },
+            {
+                "Resource": "*",
+                "Action": [
+                    "ec2:DescribeKeyPairs",
+                    "ec2:DescribeSubnets",
+                    "autoscaling:DescribeLaunchConfigurations",
+                    "autoscaling:UpdateAutoScalingGroup",
+                    "autoscaling:DescribeAutoScalingGroups",
+                    "autoscaling:DescribeScalingActivities",
+                    "elasticloadbalancing:DescribeLoadBalancers"
+                ],
+                "Effect": "Allow"
+            }
+            ]
+          }
+        } ]
+      }
+    },
+    "MasterInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [ {
+          "Ref": "MasterRole"
+        } ]
+      }
+    },
+    "MasterServerGroup" : {
+      "Type" : "AWS::AutoScaling::AutoScalingGroup",
+      "Properties" : {
+        "LaunchConfigurationName" : { "Ref" : "MasterLaunchConfig" },
+        "MinSize" : {{ num_masters }},
+        "MaxSize" : {{ num_masters }},
+        "DesiredCapacity" : {{ num_masters }},
+        "LoadBalancerNames" : [ { "Ref" : "ElasticLoadBalancer" }, { "Ref" : "InternalMasterLoadBalancer"} ],
+        "VPCZoneIdentifier" : [{ "Ref" : "PublicSubnet" }],
+        "Tags" : [
+          {
+            "Key" : "role",
+            "Value" : "mesos-master",
+            "PropagateAtLaunch" : "true"
+          }
+        ]
+      },
+      "CreationPolicy" : {
+        "ResourceSignal" : {
+          "Timeout" : { "Fn::FindInMap" : [ "Parameters", "StackCreationTimeout", "default" ] },
+          "Count" : {{ num_masters }}
+        }
+      }
+    },
+    "MasterLaunchConfig" : {
+      "Type" : "AWS::AutoScaling::LaunchConfiguration",
+      "Properties" : {
+        "KeyName" : { "Ref" : "KeyName" },
+        "ImageId": {
+          "Fn::If": [
+            "UseCustomAMI",
+            {
+              "Ref": "CustomAMI"
+            },
+            {
+              "Fn::FindInMap": [
+                "RegionToAmi",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "{{ os_type }}"
+              ]
+            }
+          ]
+        },
+        "BlockDeviceMappings" : [ { "DeviceName" : "/dev/sdb", "VirtualName" : "ephemeral0" } ],
+        "SecurityGroups" : [ { "Ref" : "MasterSecurityGroup" }, { "Ref" : "AdminSecurityGroup" } ],
+        "IamInstanceProfile" : { "Ref" : "MasterInstanceProfile" },
+        "AssociatePublicIpAddress" : "true",
+        "InstanceType" : { "Ref" : "MasterInstanceType" },
+        "UserData" : { "Fn::Base64" : { "Fn::Join": ["", [
+          {{ cloud_config }}
+        ]]
+        }
+        }
+      }
+    },
+    "InternalMasterLoadBalancer" : {
+      "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties" : {
+        "SecurityGroups": [{ "Ref": "LbSecurityGroup" }, { "Ref" : "AdminSecurityGroup" }, { "Ref" : "PrivateAgentSecurityGroup" }, { "Ref" : "PublicAgentSecurityGroup" }, { "Ref" : "MasterSecurityGroup" }],
+        "Subnets": [{ "Ref": "PublicSubnet" }],
+        "Scheme": "internal",
+        "Listeners" : [
+          {
+            "LoadBalancerPort" : "5050",
+            "Protocol" : "HTTP",
+            "InstancePort" : "5050",
+            "InstanceProtocol" : "HTTP"
+          },
+          {
+            "LoadBalancerPort" : "2181",
+            "Protocol" : "TCP",
+            "InstancePort" : "2181",
+            "InstanceProtocol" : "TCP"
+          },
+          {
+            "LoadBalancerPort" : "8181",
+            "Protocol" : "HTTP",
+            "InstancePort" : "8181",
+            "InstanceProtocol" : "HTTP"
+          },
+          {
+            "LoadBalancerPort" : "80",
+            "Protocol" : "TCP",
+            "InstancePort" : "80",
+            "InstanceProtocol" : "TCP"
+          },
+          {
+            "LoadBalancerPort" : "443",
+            "Protocol" : "TCP",
+            "InstancePort" : "443",
+            "InstanceProtocol" : "TCP"
+          },
+          {
+            "LoadBalancerPort" : "8080",
+            "Protocol" : "HTTP",
+            "InstancePort" : "8080",
+            "InstanceProtocol" : "HTTP"
+          }],
+        "HealthCheck" : {
+          "Target" : "TCP:5050",
+          "HealthyThreshold" : "2",
+          "UnhealthyThreshold" : "2",
+          "Interval" : "30",
+          "Timeout" : "5"
+        }
+      }
+    },
+    "ElasticLoadBalancer" : {
+      "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties" : {
+        "SecurityGroups": [{ "Ref": "LbSecurityGroup" }, { "Ref" : "AdminSecurityGroup" }],
+        "Subnets": [{ "Ref": "PublicSubnet" }],
+        "Listeners" : [
+          {
+            "LoadBalancerPort" : "80",
+            "Protocol" : "TCP",
+            "InstancePort" : "80",
+            "InstanceProtocol" : "TCP"
+          },
+          {
+            "LoadBalancerPort" : "443",
+            "Protocol" : "TCP",
+            "InstancePort" : "443",
+            "InstanceProtocol" : "TCP"
+          }],
+        "HealthCheck" : {
+          "Target" : "TCP:5050",
+          "HealthyThreshold" : "2",
+          "UnhealthyThreshold" : "2",
+          "Interval" : "30",
+          "Timeout" : "5"
+        }
+      }
+    }
+  },
+  "Outputs" : {
+    "InternalMasterLoadBalancerDnsName": {
+      "Description" : "Internal LB DNS Name",
+      "Value" : { "Fn::GetAtt" : [ "InternalMasterLoadBalancer", "DNSName" ]}
+    },
+    "MasterDNSName" : {
+      "Description" : "Mesos Master DNS Name",
+      "Value" : { "Fn::GetAtt" : [ "ElasticLoadBalancer", "DNSName" ]}
+    }
+  }
+}

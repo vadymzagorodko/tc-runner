@@ -1,0 +1,21 @@
+storage:
+  aws:
+    kind: aws_s3
+    bucket: downloads.dcos.io
+    object_prefix: dcos
+    download_url: https://downloads.dcos.io/dcos/
+  azure:
+    kind: azure_block_blob
+    account_name: $AZURE_PROD_STORAGE_ACCOUNT
+    account_key: $AZURE_PROD_STORAGE_ACCESS_KEY
+    container: dcos
+    download_url: https://dcosio.azureedge.net/dcos/
+testing:
+  aws:
+    kind: aws_s3
+    bucket: testing.dcos.io
+    object_prefix: dcos
+    download_url: https://s3-us-west-2.amazonaws.com/testing.dcos.io/dcos/
+options:
+  preferred: aws
+  cloudformation_s3_url: https://s3-us-west-2.amazonaws.com/downloads.dcos.io/dcos

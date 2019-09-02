@@ -1,0 +1,6 @@
+#mktarball artifacts
+cache/
+
+# Per-pacage artifacts
+*/result
+*/src

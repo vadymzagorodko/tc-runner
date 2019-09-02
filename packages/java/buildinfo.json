@@ -1,0 +1,12 @@
+{
+  "sources" : {
+    "java": {
+      "kind": "url_extract",
+      "url": "https://downloads.mesosphere.io/java/jdk-8u192-linux-x64.tar.gz",
+      "sha1": "9e482a7ded535f14916f91510b78904eace28e49"
+    }
+  },
+  "environment": {
+    "JAVA_HOME": "/opt/mesosphere/active/java/usr/java"
+  }
+}

@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+  <title>DC/OS {{ build_name }} AWS CloudFormation</title>
+</head>
+<body>
+<h1>DC/OS {{ build_name }} AWS CloudFormation</h1>
+<ul>
+  <li>For more information on creating a DC/OS cluster, see the <a href='https://docs.mesosphere.com/latest/installing/'>DC/OS AWS documentation</a>.</li>
+</ul>
+<table>
+<tr><th>Region Name</th><th>Region Code</th>
+{% for variant in variant_list %}<th>{{ variant }} Single Master</th><th>{{ variant }} HA: Three Master</th></tr>{% endfor %}
+{% for button in regular_buttons %}{{ button }}{% endfor %}
+</table>
+
+<h2>Cluster Types</h2>
+<h3>Single-Master</h3>
+<p>Spawns a cluster with 1 master and 5 slaves. Should be suitable for running basic tests.</p>
+<h3>HA: Three Master</h3>
+<p>Spawns a cluster with 3 masters and 5 slaves. HA. Capable of basic production workloads, as well as testing how frameworks interact with master-failover.</p>
+<footer>
+<pre>
+DC/OS Release: {{ tag }}
+DC/OS Commit: {{ commit }}
+</pre>
+</footer>
+</body>
+</html>

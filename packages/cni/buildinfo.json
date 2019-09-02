@@ -1,0 +1,9 @@
+{
+    "docker": "golang:1.8",
+    "single_source" : {
+      "kind": "git",
+      "git": "https://github.com/containernetworking/plugins.git",
+      "ref" : "72b62babeeb3d7b25c9809ea9eb9fc9c02cc0f71",
+      "ref_origin": "master"
+    }
+}

@@ -1,0 +1,29 @@
+{
+  "requires": ["openssl", "liblzma"],
+  "environment": {
+    "PYTHONPATH": "/opt/mesosphere/lib/python3.6/site-packages",
+    "PYTHONUNBUFFERED": "true"
+  },
+  "sources": {
+    "python": {
+      "kind": "url_extract",
+      "url": "https://www.python.org/ftp/python/3.6.8/Python-3.6.8.tgz",
+      "sha1": "09fcc4edaef0915b4dedbfb462f1cd15f82d3a6f"
+    },
+    "cython": {
+      "kind": "url_extract",
+      "url": "https://files.pythonhosted.org/packages/f0/f8/7f406aac4c6919d5a4ce16509bbe059cd256e9ad94bae5ccac14094b7c51/Cython-0.29.1.tar.gz",
+      "sha1": "afbb57c0c4a194dcd32167bcca5ee02257b8fbab"
+    },
+    "setuptools": {
+      "kind": "url",
+      "url": "https://files.pythonhosted.org/packages/96/06/c8ee69628191285ddddffb277bd5abdf769166e7a14b867c2a172f0175b1/setuptools-40.4.3-py2.py3-none-any.whl",
+      "sha1": "40410299ab3c7b091f9dff4dd7bda7f874c4d1b6"
+    },
+    "pip": {
+      "kind": "url_extract",
+      "url": "https://files.pythonhosted.org/packages/45/ae/8a0ad77defb7cc903f09e551d88b443304a9bd6e6f124e75c0fbbf6de8f7/pip-18.1.tar.gz",
+      "sha1": "1226368a8d39bd8b945517b6f7cb9802b279564e"
+    }
+  }
+}

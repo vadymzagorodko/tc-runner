@@ -1,0 +1,9 @@
+{
+  "docker": "golang:1.11",
+  "single_source" : {
+    "kind": "git",
+    "git": "https://github.com/codedellemc/dvdcli.git",
+    "ref": "7dede1486c87bef903bae9049e506af2049d734b",
+    "ref_origin": "master"
+  }
+}

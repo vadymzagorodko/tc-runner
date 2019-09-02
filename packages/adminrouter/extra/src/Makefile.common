@@ -1,0 +1,128 @@
+.DEFAULT_GOAL := help
+SHELL := /bin/bash
+
+# Absolute path to AdminRouter source, even if make is run from elsewhere
+SRC_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+
+# API Docs path, relative to the src dir
+API_DOCS_DIR := docs/api
+
+DEV_PATH := /usr/local/src
+
+DCOSAR_AR_LOCAL_PATH := $(CURDIR)
+DCOSAR_AR_CTR_MOUNT := /usr/local/adminrouter/nginx/conf/
+
+# Allow for overriding DNS resolver used by AR devkit with a one specified by
+# the user. Google's DNS servers sometimes time out/are not super-reliable :(
+ifdef LOCAL_DNS
+    $(info Using `$(LOCAL_DNS)` resolver for resolving hostnames in the container)
+    DNS_DOCKER_OPTS := --dns=$(LOCAL_DNS)
+else
+    $(info Using default resolvers for resolving hostnames in the container)
+    DNS_DOCKER_OPTS := --dns=8.8.8.8 --dns=8.8.4.4
+endif
+
+# Vary the name of the container on the per-flavour basis.
+# The way we detect the repository flavour is consistent with how test harness
+# does it.
+ifeq ($(wildcard test-harness/tests/ee/), test-harness/tests/ee/)
+    DEVKIT_NAME=adminrouter-devkit-ee
+else
+    DEVKIT_NAME=adminrouter-devkit-open
+endif
+
+DEVKIT_BASE_DOCKER_OPTS := --name $(DEVKIT_NAME) \
+	$(DNS_DOCKER_OPTS) \
+	-e NUM_CORES=2 \
+	-e PYTHONDONTWRITEBYTECODE=true
+DEVKIT_DOCKER_OPTS := $(DEVKIT_BASE_DOCKER_OPTS) \
+	-v $(DCOSAR_AR_LOCAL_PATH):$(DCOSAR_AR_CTR_MOUNT)
+
+.PHONY: clean-devkit-container
+clean-devkit-container:
+	@# `@` char only mutes stdout, here we need to mute stderr as well:
+	@docker rm -vf $(DEVKIT_NAME) &> /dev/null || true
+
+.PHONY: clean-containers
+clean-containers: clean-devkit-container
+
+.PHONY: clean
+clean:
+	@echo "Cleaning up..."
+	-sudo find . -type f -name '*.pyc' -delete
+
+.PHONY: devkit
+devkit:
+	@if $$(docker images | grep mesosphere/$(DEVKIT_NAME) | grep -q full); then \
+		echo "Devkit image is present, not rebuilding it."; \
+	else \
+		$(MAKE) update-devkit; \
+	fi
+
+.PHONY: update-devkit
+update-devkit: clean-devkit-container
+	@docker build \
+		--rm --force-rm \
+		-t mesosphere/$(DEVKIT_NAME):noresty \
+		-f ../../docker/Dockerfile \
+			../../docker/
+	@docker run \
+		$(DEVKIT_BASE_DOCKER_OPTS) \
+		mesosphere/$(DEVKIT_NAME):noresty \
+			/bin/bash -c "\$$OPENRESTY_COMPILE_SCRIPT --add-module=\$$VTS_MODULE_DIR" && \
+	docker commit $$(docker ps -a -q -f name=$(DEVKIT_NAME)) \
+		mesosphere/$(DEVKIT_NAME):full
+	@docker rm -f $(DEVKIT_NAME)
+	@docker rmi -f mesosphere/$(DEVKIT_NAME):noresty
+
+.PHONY: shell
+shell: devkit clean-containers
+	@docker run --rm -it \
+		$(DEVKIT_DOCKER_OPTS) \
+		--privileged \
+		mesosphere/$(DEVKIT_NAME):full /bin/bash
+
+.PHONY: test
+test: devkit clean-containers
+	@docker run \
+		$(DEVKIT_DOCKER_OPTS) \
+		--privileged \
+		mesosphere/$(DEVKIT_NAME):full /bin/bash -x -c " \
+ 			pytest \
+ 		"
+
+.PHONY: api-docs
+api-docs: devkit clean-containers
+	@mkdir -p $(SRC_DIR)/$(API_DOCS_DIR)
+	@for prefix in nginx.master nginx.agent ; do \
+		echo "Generating $(API_DOCS_DIR)/$${prefix}.yaml" >&2 && \
+		docker run --rm $(DEVKIT_DOCKER_OPTS) mesosphere/$(DEVKIT_NAME):full \
+			ngindox parse -f $${prefix}.conf > $(SRC_DIR)/$(API_DOCS_DIR)/$${prefix}.yaml && \
+		echo "Generating $(API_DOCS_DIR)/$${prefix}.html" >&2 && \
+		docker run --rm $(DEVKIT_DOCKER_OPTS) mesosphere/$(DEVKIT_NAME):full \
+			ngindox ui -f $(API_DOCS_DIR)/$${prefix}.yaml > $(SRC_DIR)/$(API_DOCS_DIR)/$${prefix}.html ; \
+	done
+
+.PHONY: check-api-docs
+DOCS_TEXT := See https://github.com/dcos/dcos/tree/master/packages/adminrouter/extra/src\#endpoints-documentation for more info.
+check-api-docs: api-docs clean-containers
+ifneq ($(shell git update-index --refresh; echo $$?),0)
+	$(error "Found local changes. Please run `make api-docs` and commit the result. $(DOCS_TEXT)")
+endif
+ifneq ($(shell git diff-files --quiet; echo $$?),0)
+	$(error 'Found unstaged changes. Please run `make api-docs` and commit the result. $(DOCS_TEXT)')
+endif
+ifneq ($(shell git ls-files --exclude-standard --others; echo $$?),0)
+	$(error 'Found untracked and unignored changes. Please run `make api-docs` and commit the result. $(DOCS_TEXT)')
+endif
+	@echo 'No changes found -- Admin Router API docs are up to date.' >&2
+
+.PHONY: lint
+lint: devkit clean-containers
+	@docker run \
+		$(DEVKIT_DOCKER_OPTS) \
+		mesosphere/$(DEVKIT_NAME):full /bin/bash -x -c "flake8"
+
+.PHONY: help
+help:
+	@echo "Please see README.md file for help and a howto."

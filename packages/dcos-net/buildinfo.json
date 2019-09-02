@@ -1,0 +1,16 @@
+{
+  "requires": ["openssl", "ncurses", "erlang", "libsodium"],
+  "sources": {
+    "dcos-net": {
+      "kind": "git",
+      "git": "https://github.com/dcos/dcos-net.git",
+      "ref": "b3acd818f7824cdc8238542c44ebce26f75309b5",
+      "ref_origin": "master"
+    }
+  },
+  "sysctl": {
+    "dcos-net": {
+      "net.ipv4.vs.conntrack": "1"
+    }
+  }
+}

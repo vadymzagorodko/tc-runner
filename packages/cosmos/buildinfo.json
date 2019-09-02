@@ -1,0 +1,13 @@
+{
+  "requires": [
+    "java",
+    "exhibitor"
+  ],
+  "single_source": {
+    "kind": "url",
+    "url": "https://downloads.dcos.io/cosmos/0.6.2-SNAPSHOT-375-master-9afd051e46/cosmos-server-0.6.2-SNAPSHOT-375-master-9afd051e46-one-jar.jar",
+    "sha1": "556ccf647ff81a491903c174e122d3f5d629cd39"
+  },
+  "username": "dcos_cosmos",
+  "state_directory": true
+}
