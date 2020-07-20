@@ -360,7 +360,7 @@ def validate_compatible(packages, roles):
     #  - There are no repeated file/folder in the well_known_dirs
     #       - Including the roles subfolders.
     #  - There is a base set of required package names (pkgpanda, mesos, config)
-    #  - The config is for this specific type of host (master, slave)?
+    #  - The config is for this specific type of host (main, subordinate)?
 
 
 # TODO(cmaloney): Add a github fetcher, useful for grabbing config tarballs.

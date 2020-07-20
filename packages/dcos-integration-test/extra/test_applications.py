@@ -202,7 +202,7 @@ def test_octarine(dcos_api_session, timeout=30):
     # reaches the proxy, the port is not used, and a request is made
     # to port 80.
     app, uuid = test_helpers.marathon_test_app(host_port=80)
-    app['acceptedResourceRoles'] = ["slave_public"]
+    app['acceptedResourceRoles'] = ["subordinate_public"]
     app['requirePorts'] = True
 
     with dcos_api_session.marathon.deploy_and_cleanup(app):

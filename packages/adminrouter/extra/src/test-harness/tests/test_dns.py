@@ -94,7 +94,7 @@ class TestNginxResolver:
                 expect_status=404,
                 agent_id=AGENT_EXTRA_ID)
 
-            # Now, let's change DNS entry to point to other Mesos master
+            # Now, let's change DNS entry to point to other Mesos main
             dns_server_mock.set_dns_entry(
                 'leader.mesos.', ip='127.0.0.3', ttl=self.LONG_TTL)
 

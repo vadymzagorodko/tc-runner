@@ -103,7 +103,7 @@ def dcos_signal(b, opts):
 
 
 @check_root
-def dcos_telegraf_master(b, opts):
+def dcos_telegraf_main(b, opts):
     b.cluster_id()
 
 
@@ -114,14 +114,14 @@ def dcos_telegraf_agent(b, opts):
 
 @check_root
 def dcos_net(b, opts):
-    if 'master' in get_roles():
-        dcos_net_master(b, opts)
+    if 'main' in get_roles():
+        dcos_net_main(b, opts)
     else:
         dcos_net_agent(b, opts)
 
 
 @check_root
-def dcos_net_master(b, opts):
+def dcos_net_main(b, opts):
     b.cluster_id()
 
 
@@ -186,16 +186,16 @@ bootstrappers = {
     'dcos-adminrouter': dcos_adminrouter,
     'dcos-bouncer': dcos_bouncer,
     'dcos-signal': dcos_signal,
-    'dcos-diagnostics-master': noop,
+    'dcos-diagnostics-main': noop,
     'dcos-diagnostics-agent': noop,
-    'dcos-checks-master': noop,
+    'dcos-checks-main': noop,
     'dcos-checks-agent': noop,
-    'dcos-fluent-bit-master': noop,
+    'dcos-fluent-bit-main': noop,
     'dcos-fluent-bit-agent': noop,
     'dcos-marathon': noop,
-    'dcos-mesos-master': noop,
-    'dcos-mesos-slave': noop,
-    'dcos-mesos-slave-public': noop,
+    'dcos-mesos-main': noop,
+    'dcos-mesos-subordinate': noop,
+    'dcos-mesos-subordinate-public': noop,
     'dcos-cosmos': noop,
     'dcos-cockroach': noop,
     'dcos-cockroach-config-change': dcos_cockroach_config_change,
@@ -203,7 +203,7 @@ bootstrappers = {
     'dcos-history': dcos_history,
     'dcos-mesos-dns': noop,
     'dcos-net': dcos_net,
-    'dcos-telegraf-master': dcos_telegraf_master,
+    'dcos-telegraf-main': dcos_telegraf_main,
     'dcos-telegraf-agent': dcos_telegraf_agent,
     'dcos-ui-update-service': noop,
 }
@@ -226,8 +226,8 @@ def main():
         os.environ.pop(name, None)
         os.environ.pop(name.lower(), None)
 
-    if 'master' in get_roles():
-        exhibitor.wait(opts.master_count)
+    if 'main' in get_roles():
+        exhibitor.wait(opts.main_count)
 
     b = bootstrap.Bootstrapper(opts.zk)
 
@@ -241,12 +241,12 @@ def main():
 
 
 def get_zookeeper_address_agent():
-    if os.getenv('MASTER_SOURCE') == 'master_list':
-        # dcos-net agents with static master list
-        with open('/opt/mesosphere/etc/master_list', 'r') as f:
-            master_list = json.load(f)
-        assert len(master_list) > 0
-        return random.choice(master_list) + ':2181'
+    if os.getenv('MASTER_SOURCE') == 'main_list':
+        # dcos-net agents with static main list
+        with open('/opt/mesosphere/etc/main_list', 'r') as f:
+            main_list = json.load(f)
+        assert len(main_list) > 0
+        return random.choice(main_list) + ':2181'
     elif os.getenv('EXHIBITOR_ADDRESS'):
         # dcos-net agents on AWS
         return os.getenv('EXHIBITOR_ADDRESS') + ':2181'
@@ -256,12 +256,12 @@ def get_zookeeper_address_agent():
 
 
 def get_zookeeper_address():
-    # Masters use a special zk address since dcos-net and the like aren't up yet.
+    # Mains use a special zk address since dcos-net and the like aren't up yet.
     roles = get_roles()
-    if 'master' in roles:
+    if 'main' in roles:
         return '127.0.0.1:2181'
 
-    if 'slave' in roles or 'slave_public' in roles:
+    if 'subordinate' in roles or 'subordinate_public' in roles:
         return get_zookeeper_address_agent()
 
     raise Exception("Can't get zookeeper address. Unknown role: {}".format(roles))
@@ -278,10 +278,10 @@ def parse_args():
         default=zk_default,
         help='Host string passed to Kazoo client constructor.')
     parser.add_argument(
-        '--master_count',
+        '--main_count',
         type=str,
-        default='/opt/mesosphere/etc/master_count',
-        help='File with number of master servers')
+        default='/opt/mesosphere/etc/main_count',
+        help='File with number of main servers')
     return parser.parse_args()
 
 

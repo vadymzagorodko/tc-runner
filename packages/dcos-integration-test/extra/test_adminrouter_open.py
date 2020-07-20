@@ -19,7 +19,7 @@ class TestRedirectSecurity:
             ('/exhibitor/', 302),
             ('/marathon', 307),
             ('/mesos', 301),
-            ('/mesos/master/redirect', 307),
+            ('/mesos/main/redirect', 307),
             ('/mesos_dns', 301),
             ('/net', 301),
             ('/pkgpanda/repository', 301),

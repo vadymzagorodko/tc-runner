@@ -50,7 +50,7 @@ from pkgpanda.util import (
 )
 
 # List of all roles all templates should have.
-role_names = {"master", "slave", "slave_public"}
+role_names = {"main", "subordinate", "subordinate_public"}
 
 role_template = config_dir + '/roles/{}'
 

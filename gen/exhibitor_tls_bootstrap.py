@@ -24,7 +24,7 @@ def _check(config: Dict[str, Any]) -> Tuple[List[str], bool]:
                 This is necessary to prevent this orchestration
                 from running when gen is not executed on a proper
                 bootstrap node. This is a soft failure
-            - master_discovery must be static
+            - main_discovery must be static
             - DC/OS variant must be enterprise
             - exhibitor_bootstrap_ca_url must not be set. When set,
               it indicates that the ca service will be initialized and
@@ -35,8 +35,8 @@ def _check(config: Dict[str, Any]) -> Tuple[List[str], bool]:
     checks = [
         (lambda: config.get('exhibitor_tls_enabled') == 'true',
          'Exhibitor security is disabled', True),
-        (lambda: config['master_discovery'] == 'static',
-         'Only static master discovery is supported', True),
+        (lambda: config['main_discovery'] == 'static',
+         'Only static main discovery is supported', True),
         (lambda: config['dcos_variant'] == 'enterprise',
          'Exhibitor security is an enterprise feature', True),
         (lambda: urlparse(config['bootstrap_url']).scheme != 'file',

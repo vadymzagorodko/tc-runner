@@ -9,14 +9,14 @@ import pytest
 @pytest.fixture(
     params=[
         'agent_ar_process_pertest',
-        'master_ar_process_pertest'
+        'main_ar_process_pertest'
     ])
 def ar_process(request):
     return request.getfixturevalue(request.param)
 
 
 class TestNginxWorkersGroup:
-    def test_if_nginx_workers_on_master_have_correct_group(
+    def test_if_nginx_workers_on_main_have_correct_group(
             self, ar_process):
         gid = grp.getgrnam('dcos_adminrouter').gr_gid
         for proc in psutil.process_iter():

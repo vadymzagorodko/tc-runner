@@ -24,7 +24,7 @@ def test_fetch(tmpdir):
     expect_fs(
         "{0}".format(tmpdir),
         {
-            "mesos--0.22.0": ["lib", "bin_master", "bin_slave", "pkginfo.json", "bin"]
+            "mesos--0.22.0": ["lib", "bin_main", "bin_subordinate", "pkginfo.json", "bin"]
         })
     # TODO(cmaloney): Test multiple fetches on one line.
     # TODO(cmaloney): Test unable to fetch case.
@@ -44,6 +44,6 @@ def test_add(tmpdir):
     expect_fs(
         "{0}".format(tmpdir),
         {
-            "mesos--0.22.0": ["lib", "bin_master", "bin_slave", "pkginfo.json", "bin"]
+            "mesos--0.22.0": ["lib", "bin_main", "bin_subordinate", "pkginfo.json", "bin"]
         })
     # TODO(branden): Test unable to add case.

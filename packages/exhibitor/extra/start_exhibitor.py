@@ -82,7 +82,7 @@ if os.path.exists('/opt/mesosphere/etc/exhibitor_web.xml') and \
         '--remoteauth', 'basic:admin'
     ])
 
-zookeeper_cluster_size = int(open('/opt/mesosphere/etc/master_count').read().strip())
+zookeeper_cluster_size = int(open('/opt/mesosphere/etc/main_count').read().strip())
 
 check_ms = 30000
 if zookeeper_cluster_size == 1:
@@ -136,15 +136,15 @@ if exhibitor_backend == 'STATIC':
     print("Exhibitor configured for static ZK ensemble")
     # In case of a static Exhibitor backend DC/OS configuration we can check
     # that the value for the hostname set by invoking the ip-detect script is
-    # indeed included in the master list.
+    # indeed included in the main list.
     # https://jira.mesosphere.com/browse/COPS-3485
     exhibitor_staticensemble = get_var_assert_set('EXHIBITOR_STATICENSEMBLE')
-    master_ips = [i.split(':')[1] for i in exhibitor_staticensemble.split(',')]
-    if detected_ip not in master_ips:
+    main_ips = [i.split(':')[1] for i in exhibitor_staticensemble.split(',')]
+    if detected_ip not in main_ips:
         message = (
-            "ERROR: ip-detect returned {master_ip}. "
-            "{master_ip} is not in the configured list of masters."
-        ).format(master_ip=detected_ip)
+            "ERROR: ip-detect returned {main_ip}. "
+            "{main_ip} is not in the configured list of mains."
+        ).format(main_ip=detected_ip)
         print(message)
         sys.exit(1)
     exhibitor_cmdline += [
@@ -152,7 +152,7 @@ if exhibitor_backend == 'STATIC':
         '--staticensemble', get_var_assert_set('EXHIBITOR_STATICENSEMBLE')
     ]
 elif zookeeper_cluster_size == 1:
-    print("Exhibitor configured for single master/static backend")
+    print("Exhibitor configured for single main/static backend")
     # A Zookeeper cluster size of 1 is a special case regarding the Exhibitor backend.
     # It will always result in a static backend independent of the DC/OS configuration.
     # This allows for skipping exhibitor.wait() logic that is responsible for waiting

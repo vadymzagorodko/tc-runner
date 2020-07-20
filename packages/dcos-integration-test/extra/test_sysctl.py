@@ -20,7 +20,7 @@ def test_if_default_systctls_are_set(dcos_api_session):
 
     argv = [
         '/opt/mesosphere/bin/mesos-execute',
-        '--master=leader.mesos:5050',
+        '--main=leader.mesos:5050',
         '--command={}'.format(test_command),
         '--shell=true',
         '--env={"LC_ALL":"C"}']
@@ -39,4 +39,4 @@ def test_if_default_systctls_are_set(dcos_api_session):
         assert expected_output in output
 
     run_and_check(argv)
-    run_and_check(argv + ['--role=slave_public'])
+    run_and_check(argv + ['--role=subordinate_public'])

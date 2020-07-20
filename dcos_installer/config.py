@@ -15,7 +15,7 @@ config_sample = """
 ---
 # The name of your DC/OS cluster. Visable in the DC/OS user interface.
 cluster_name: 'DC/OS'
-master_discovery: static
+main_discovery: static
 exhibitor_storage_backend: 'static'
 resolvers:
 - 8.8.8.8

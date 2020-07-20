@@ -11,10 +11,10 @@ initialize a new cluster causing the old cluster to be effectively
 discarded.
 
 This poses an interesting problem for us as it means we need to know whether a
-cluster has been bootstrapped before, from any of the masters in the cluster.
+cluster has been bootstrapped before, from any of the mains in the cluster.
 
 Additionally, once a cluster has been bootstrapped by starting a node in this
-"initial master mode" all subsequent nodes need to be started with one or more
+"initial main mode" all subsequent nodes need to be started with one or more
 peer IP addresses provided to them via the --join<ip1,ip2,...,ipN> parameter.
 
 As this list of IPs is used for discovery through the gossip protocol, not all
@@ -37,7 +37,7 @@ with the following command and they will discover one another:
 ./cockroach --join=node1,node2,node3
 
 Here we have used the hostname of the nodes (node1, node2, etc.) but for DC/OS
-we would use the internal IP addresses of the master nodes instead.
+we would use the internal IP addresses of the main nodes instead.
 
 CockroachDB also supports a --pid-file parameter which writes the PID to
 a file once the server is ready to serve requests.

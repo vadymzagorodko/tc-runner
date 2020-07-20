@@ -3,7 +3,7 @@ from setuptools import setup
 config = {
     'name': 'dcos-history',
     'version': '0.1.0',
-    'description': 'Buffers the state of the mesos leading master state',
+    'description': 'Buffers the state of the mesos leading main state',
     'author': 'Mesosphere, Inc.',
     'author_email': 'help@dcos.io',
     'maintainer': 'DC/OS Community',

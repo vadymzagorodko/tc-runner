@@ -26,18 +26,18 @@ FLAG = b'flag'
 
 
 @pytest.fixture
-def three_master_cluster(
+def three_main_cluster(
     artifact_path: Path,
     docker_backend: Docker,
     request: SubRequest,
     log_dir: Path,
 ) -> Cluster:
     """
-    Spin up a highly-available DC/OS cluster with three master nodes.
+    Spin up a highly-available DC/OS cluster with three main nodes.
     """
     with Cluster(
         cluster_backend=docker_backend,
-        masters=3,
+        mains=3,
         agents=0,
         public_agents=0,
     ) as cluster:
@@ -55,12 +55,12 @@ def three_master_cluster(
 
 
 @pytest.fixture
-def zk_client(three_master_cluster: Cluster) -> KazooClient:
+def zk_client(three_main_cluster: Cluster) -> KazooClient:
     """
     ZooKeeper client connected to a given DC/OS cluster.
     """
     zk_hostports = ','.join(['{}:2181'.format(m.public_ip_address)
-                             for m in three_master_cluster.masters])
+                             for m in three_main_cluster.mains])
     retry_policy = KazooRetry(
         max_tries=-1,
         delay=1,
@@ -113,15 +113,15 @@ class TestZooKeeperBackup:
 
     def test_transaction_log_backup_and_restore(
         self,
-        three_master_cluster: Cluster,
+        three_main_cluster: Cluster,
         zk_client: KazooClient,
         tmp_path: Path,
         request: SubRequest,
         log_dir: Path,
     ) -> None:
         """
-        In a 3-master cluster, backing up the transaction log of ZooKeeper on
-        one node and restoring from the backup on all master results in a
+        In a 3-main cluster, backing up the transaction log of ZooKeeper on
+        one node and restoring from the backup on all main results in a
         functioning DC/OS cluster with previously backed up Znodes restored.
         """
         # Write to ZooKeeper before backup
@@ -132,14 +132,14 @@ class TestZooKeeperBackup:
         backup_name = 'zk-backup-{random}.tar.gz'.format(random=random)
         backup_local_path = tmp_path / backup_name
 
-        # Take ZooKeeper backup from one master node.
-        _do_backup(next(iter(three_master_cluster.masters)), backup_local_path)
+        # Take ZooKeeper backup from one main node.
+        _do_backup(next(iter(three_main_cluster.mains)), backup_local_path)
 
         # Store a datapoint which we expect to get lost.
         not_backed_up_flag = _zk_set_flag(zk_client)
 
-        # Restore ZooKeeper from backup on all master nodes.
-        _do_restore(three_master_cluster.masters, backup_local_path)
+        # Restore ZooKeeper from backup on all main nodes.
+        _do_restore(three_main_cluster.mains, backup_local_path)
 
         # Read from ZooKeeper after restore
         assert _zk_flag_exists(zk_client, persistent_flag)
@@ -148,22 +148,22 @@ class TestZooKeeperBackup:
 
         # Assert that DC/OS is intact.
         wait_for_dcos_oss(
-            cluster=three_master_cluster,
+            cluster=three_main_cluster,
             request=request,
             log_dir=log_dir,
         )
 
     def test_snapshot_backup_and_restore(
         self,
-        three_master_cluster: Cluster,
+        three_main_cluster: Cluster,
         zk_client: KazooClient,
         tmp_path: Path,
         request: SubRequest,
         log_dir: Path,
     ) -> None:
         """
-        In a 3-master cluster, backing up a snapshot of ZooKeeper on
-        one node and restoring from the backup on all master results in a
+        In a 3-main cluster, backing up a snapshot of ZooKeeper on
+        one node and restoring from the backup on all main results in a
         functioning DC/OS cluster with previously backed up Znodes restored.
         """
         # Modify Exhibitor conf, generating ZooKeeper conf (set
@@ -174,17 +174,17 @@ class TestZooKeeperBackup:
             '-i', "'s/zoo-cfg-extra=/zoo-cfg-extra=snapCount\\\\=1\\&/'",
             '/opt/mesosphere/active/exhibitor/usr/exhibitor/start_exhibitor.py',
         ]
-        for master in three_master_cluster.masters:
-            master.run(
+        for main in three_main_cluster.mains:
+            main.run(
                 args=args,
                 shell=True,
                 output=Output.LOG_AND_CAPTURE,
             )
-        for master in three_master_cluster.masters:
-            master.run(['systemctl', 'restart', 'dcos-exhibitor'])
+        for main in three_main_cluster.mains:
+            main.run(['systemctl', 'restart', 'dcos-exhibitor'])
 
         wait_for_dcos_oss(
-            cluster=three_master_cluster,
+            cluster=three_main_cluster,
             request=request,
             log_dir=log_dir,
         )
@@ -202,14 +202,14 @@ class TestZooKeeperBackup:
         backup_name = 'zk-backup-{random}.tar.gz'.format(random=random)
         backup_local_path = tmp_path / backup_name
 
-        # Take ZooKeeper backup from one master node.
-        _do_backup(next(iter(three_master_cluster.masters)), backup_local_path)
+        # Take ZooKeeper backup from one main node.
+        _do_backup(next(iter(three_main_cluster.mains)), backup_local_path)
 
         # Store a datapoint which we expect to be lost.
         not_backed_up_flag = _zk_set_flag(zk_client)
 
-        # Restore ZooKeeper from backup on all master nodes.
-        _do_restore(three_master_cluster.masters, backup_local_path)
+        # Restore ZooKeeper from backup on all main nodes.
+        _do_restore(three_main_cluster.mains, backup_local_path)
 
         # Read from ZooKeeper after restore
         assert _zk_flag_exists(zk_client, persistent_flag)
@@ -218,24 +218,24 @@ class TestZooKeeperBackup:
 
         # Assert DC/OS is intact.
         wait_for_dcos_oss(
-            cluster=three_master_cluster,
+            cluster=three_main_cluster,
             request=request,
             log_dir=log_dir,
         )
 
 
-def _do_backup(master: Node, backup_local_path: Path) -> None:
+def _do_backup(main: Node, backup_local_path: Path) -> None:
     """
     Automated ZooKeeper backup procedure.
     Intended to be consistent with the documentation.
     https://jira.mesosphere.com/browse/DCOS-51647
     """
-    master.run(args=['systemctl', 'stop', 'dcos-exhibitor'])
+    main.run(args=['systemctl', 'stop', 'dcos-exhibitor'])
 
     backup_name = backup_local_path.name
     # This must be an existing directory on the remote server.
     backup_remote_path = Path('/etc/') / backup_name
-    master.run(
+    main.run(
         args=[
             '/opt/mesosphere/bin/dcos-shell',
             'dcos-zk',
@@ -246,17 +246,17 @@ def _do_backup(master: Node, backup_local_path: Path) -> None:
         output=Output.LOG_AND_CAPTURE,
     )
 
-    master.run(args=['systemctl', 'start', 'dcos-exhibitor'])
+    main.run(args=['systemctl', 'start', 'dcos-exhibitor'])
 
-    master.download_file(
+    main.download_file(
         remote_path=backup_remote_path,
         local_path=backup_local_path,
     )
 
-    master.run(args=['rm', str(backup_remote_path)])
+    main.run(args=['rm', str(backup_remote_path)])
 
 
-def _do_restore(all_masters: Set[Node], backup_local_path: Path) -> None:
+def _do_restore(all_mains: Set[Node], backup_local_path: Path) -> None:
     """
     Automated ZooKeeper restore from backup procedure.
     Intended to be consistent with the documentation.
@@ -265,17 +265,17 @@ def _do_restore(all_masters: Set[Node], backup_local_path: Path) -> None:
     backup_name = backup_local_path.name
     backup_remote_path = Path('/etc/') / backup_name
 
-    for master in all_masters:
-        master.send_file(
+    for main in all_mains:
+        main.send_file(
             local_path=backup_local_path,
             remote_path=backup_remote_path,
         )
 
-    for master in all_masters:
-        master.run(args=['systemctl', 'stop', 'dcos-exhibitor'])
+    for main in all_mains:
+        main.run(args=['systemctl', 'stop', 'dcos-exhibitor'])
 
-    for master in all_masters:
-        master.run(
+    for main in all_mains:
+        main.run(
             args=[
                 '/opt/mesosphere/bin/dcos-shell',
                 'dcos-zk', 'restore', str(backup_remote_path), '-v',
@@ -283,5 +283,5 @@ def _do_restore(all_masters: Set[Node], backup_local_path: Path) -> None:
             output=Output.LOG_AND_CAPTURE,
         )
 
-    for master in all_masters:
-        master.run(args=['systemctl', 'start', 'dcos-exhibitor'])
+    for main in all_mains:
+        main.run(args=['systemctl', 'start', 'dcos-exhibitor'])

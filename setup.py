@@ -5,7 +5,7 @@ from setuptools import setup
 
 def get_advanced_templates():
     template_base = 'aws/templates/advanced/'
-    template_names = ['advanced-master', 'advanced-priv-agent', 'advanced-pub-agent', 'infra', 'zen']
+    template_names = ['advanced-main', 'advanced-priv-agent', 'advanced-pub-agent', 'infra', 'zen']
 
     return [template_base + name + '.json' for name in template_names]
 

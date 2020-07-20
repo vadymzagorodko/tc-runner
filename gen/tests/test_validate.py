@@ -10,7 +10,7 @@ from gen.build_deploy.bash import onprem_source
 # TODO(cmaloney): Should be able to pass an exact tree to gen so that we can test
 # one little piece at a time rather than having to rework this every time that
 # DC/OS parameters change.
-@pytest.mark.skipif(pkgpanda.util.is_windows, reason="test fails on Windows reason no mesos master")
+@pytest.mark.skipif(pkgpanda.util.is_windows, reason="test fails on Windows reason no mesos main")
 def test_error_during_calc(monkeypatch):
     monkeypatch.setenv('BOOTSTRAP_ID', 'foobar')
     logger = logging.getLogger()
@@ -27,7 +27,7 @@ def test_error_during_calc(monkeypatch):
             'bootstrap_url',
             'cluster_name',
             'exhibitor_storage_backend',
-            'master_discovery'
+            'main_discovery'
         }
     }
 
@@ -43,9 +43,9 @@ def test_error_during_validate(monkeypatch):
         'ip_detect_contents': '',  # so that ip_detect_filename doesn't get used from onprem_source
         'ip6_detect_contents': '',
         'exhibitor_storage_backend': 'static',
-        'master_discovery': 'static',
+        'main_discovery': 'static',
         'cluster_name': 'foobar',
-        'master_list': '["127.0.0.1"]',
+        'main_list': '["127.0.0.1"]',
     }, extra_sources=[onprem_source]) == {
         'status': 'errors',
         'errors': {

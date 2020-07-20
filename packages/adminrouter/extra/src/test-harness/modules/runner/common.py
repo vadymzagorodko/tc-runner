@@ -725,7 +725,7 @@ class NginxBase(ManagedSubprocess):
                  upstream_mesos="http://127.0.0.2:5050",
                  host_ip="127.0.0.2",
                  upstream_marathon="http://127.0.0.1:8080",
-                 role="master",
+                 role="main",
                  log_catcher=None,
                  syslog_mock=None,
                  cache_first_poll_delay=CACHE_FIRST_POLL_DELAY,
@@ -739,8 +739,8 @@ class NginxBase(ManagedSubprocess):
         """Initialize new Nginx instance
 
         Args:
-            role ('master'|'agent'): the role of this Nginx instance - either
-                AR master or AR agent.
+            role ('main'|'agent'): the role of this Nginx instance - either
+                AR main or AR agent.
             log_catcher (object: LogCatcher()): a LogCatcher instance that is
                 going to be used by the mock to store captured messages.
             auth_enabled (str): translates to `ADMINROUTER_ACTIVATE_AUTH_MODULE`
@@ -770,7 +770,7 @@ class NginxBase(ManagedSubprocess):
                 and/or the source code and its comments for details.
 
         """
-        assert role in ("master", "agent"), "wrong value of 'role' param"
+        assert role in ("main", "agent"), "wrong value of 'role' param"
         self._role = role
 
         super().__init__(log_catcher)
@@ -800,7 +800,7 @@ class NginxBase(ManagedSubprocess):
         """A helper function used in tests that is meant to abstract AR
            listen port and provide single point of change for updating
            the place where all the test expect AR to listen for requests."""
-        if self._role == 'master':
+        if self._role == 'main':
             base = 'http://127.0.0.1/'
         else:
             base = 'http://127.0.0.1:61001/'

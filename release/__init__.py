@@ -381,7 +381,7 @@ def built_resource_to_artifacts(built_resource: dict):
 #     'extra_packages': [],
 #     'files': [{
 #        # NOTE: May specify a list of known_names
-#       'known_path': 'cloudformation/single-master.cloudformation.json',
+#       'known_path': 'cloudformation/single-main.cloudformation.json',
 #       'stable_path': 'cloudformation/{}.cloudformation.json',
 #        # NOTE: Only one of content or content_file is allowed
 #       'content': '',

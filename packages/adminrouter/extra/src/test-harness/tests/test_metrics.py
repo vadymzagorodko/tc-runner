@@ -6,11 +6,11 @@ import requests
 
 class TestMetrics:
 
-    def test_metrics_html(self, master_ar_process):
+    def test_metrics_html(self, main_ar_process):
         """
         /nginx/status returns metrics in HTML format
         """
-        url = master_ar_process.make_url_from_path('/nginx/status')
+        url = main_ar_process.make_url_from_path('/nginx/status')
 
         resp = requests.get(
             url,
@@ -20,11 +20,11 @@ class TestMetrics:
         assert resp.status_code == 200
         assert resp.headers['Content-Type'] == 'text/html'
 
-    def test_metrics_prometheus(self, master_ar_process):
+    def test_metrics_prometheus(self, main_ar_process):
         """
         /nginx/metrics returns metrics in Prometheus format
         """
-        url = master_ar_process.make_url_from_path('/nginx/metrics')
+        url = main_ar_process.make_url_from_path('/nginx/metrics')
 
         resp = requests.get(
             url,
@@ -35,12 +35,12 @@ class TestMetrics:
         assert resp.headers['Content-Type'] == 'text/plain'
         assert resp.text.startswith('# HELP nginx_vts_info Nginx info')
 
-    def test_metrics_prometheus_long(self, master_ar_process, valid_user_header):
+    def test_metrics_prometheus_long(self, main_ar_process, valid_user_header):
         """
         /nginx/metrics handles long URLs.
         """
         url_path = '/service/monitoring/grafan' + 'a' * 530
-        url = master_ar_process.make_url_from_path(url_path)
+        url = main_ar_process.make_url_from_path(url_path)
 
         resp = requests.get(
             url,
@@ -49,7 +49,7 @@ class TestMetrics:
 
         assert resp.status_code == 404
 
-        url = master_ar_process.make_url_from_path('/nginx/metrics')
+        url = main_ar_process.make_url_from_path('/nginx/metrics')
 
         resp = requests.get(
             url,
@@ -60,7 +60,7 @@ class TestMetrics:
         assert resp.headers['Content-Type'] == 'text/plain'
         assert url_path in resp.text
 
-    def test_metrics_prometheus_escape(self, master_ar_process, valid_user_header):
+    def test_metrics_prometheus_escape(self, main_ar_process, valid_user_header):
         """
         /nginx/metrics escapes Prometheus format correctly.
         """
@@ -73,7 +73,7 @@ class TestMetrics:
         # Add \t for tab as well, to show that is passes through unescaped
 
         url_path = urllib.parse.quote('/service/monitoring/gra"f\\a\nn\ta')
-        url = master_ar_process.make_url_from_path(url_path)
+        url = main_ar_process.make_url_from_path(url_path)
 
         resp = requests.get(
             url,
@@ -82,7 +82,7 @@ class TestMetrics:
 
         assert resp.status_code == 404
 
-        url = master_ar_process.make_url_from_path('/nginx/metrics')
+        url = main_ar_process.make_url_from_path('/nginx/metrics')
 
         resp = requests.get(
             url,
@@ -97,7 +97,7 @@ class TestMetrics:
         # correctly escaped:
         assert '/service/monitoring/gra\\"f\\\\a\\nn\ta' in resp.text
 
-    def test_metrics_prometheus_histogram(self, master_ar_process, mocker, valid_user_header):
+    def test_metrics_prometheus_histogram(self, main_ar_process, mocker, valid_user_header):
         """
         Response times are measured in histogram output.
         """
@@ -105,7 +105,7 @@ class TestMetrics:
                             func_name='always_stall',
                             aux_data=0.05)
 
-        url = master_ar_process.make_url_from_path('/exhibitor/')
+        url = main_ar_process.make_url_from_path('/exhibitor/')
 
         resp = requests.get(
             url,
@@ -121,7 +121,7 @@ class TestMetrics:
             allow_redirects=False,
             headers=valid_user_header)
 
-        url = master_ar_process.make_url_from_path('/nginx/metrics')
+        url = main_ar_process.make_url_from_path('/nginx/metrics')
 
         resp = requests.get(
             url,

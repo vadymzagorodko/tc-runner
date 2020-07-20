@@ -19,7 +19,7 @@ def test_load_user_config():
         user_config = yaml.load(f)
 
     # Calculated parameters shouldn't be in the user config
-    assert 'master_quorum' not in user_config
+    assert 'main_quorum' not in user_config
 
     # TODO(cmaloney): Test user provided parameters are present. All the
     # platforms have different sets...
@@ -29,10 +29,10 @@ def test_load_user_config():
 def test_expanded_config():
     expanded_config = get_expanded_config()
     # Caluclated parameters should be present
-    assert 'master_quorum' in expanded_config
+    assert 'main_quorum' in expanded_config
     # Defined and used parameters should be present
     assert 'marathon_port' in expanded_config
-    assert 'mesos_master_port' in expanded_config
+    assert 'mesos_main_port' in expanded_config
     assert 'mesos_agent_port' in expanded_config
     assert 'exhibitor_port' in expanded_config
     assert 'mesos_dns_port' in expanded_config

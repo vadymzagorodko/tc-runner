@@ -35,10 +35,10 @@ def parse_log_time(fname):
 def fetch_state(headers_cb):
     timestamp = datetime.now()
     try:
-        # TODO(cmaloney): Access the mesos master redirect before requesting
+        # TODO(cmaloney): Access the mesos main redirect before requesting
         # state-summary so that we always get the "authoritative"
         # state-summary. leader.mesos isn't updated instantly.
-        # That requires mesos stop returning hostnames from `/master/redirect`.
+        # That requires mesos stop returning hostnames from `/main/redirect`.
         # See: https://github.com/apache/mesos/blob/master/src/master/http.cpp#L746
         resp = requests.get(STATE_SUMMARY_URI, timeout=FETCH_PERIOD * .9, headers=headers_cb(), verify=TLS_VERIFY)
         resp.raise_for_status()

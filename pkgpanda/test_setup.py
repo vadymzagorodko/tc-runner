@@ -39,25 +39,25 @@ def test_setup(tmpdir):
             "bin": [
                 "mesos",
                 "mesos-dir",
-                "mesos-master",
-                "mesos-slave"],
+                "mesos-main",
+                "mesos-subordinate"],
             "lib": ["libmesos.so"],
             "etc": ["dcos-service-configuration.json", "foobar", "some.json"],
             "include": [],
-            "dcos.target.wants": ["dcos-mesos-master.service"],
+            "dcos.target.wants": ["dcos-mesos-main.service"],
             "dcos.target": None,
             "environment": None,
             "environment.export": None,
-            "dcos-mesos-master.service": None           # rooted_systemd
+            "dcos-mesos-main.service": None           # rooted_systemd
         })
 
     expected_dcos_service_configuration = {
         "sysctl": {
-            "dcos-mesos-master": {
+            "dcos-mesos-main": {
                 "kernel.watchdog_thresh": "11",
                 "net.netfilter.nf_conntrack_udp_timeout": "30"
             },
-            "dcos-mesos-slave": {
+            "dcos-mesos-subordinate": {
                 "kperf.debug_level": "1"
             }
         }
@@ -107,28 +107,28 @@ def test_setup(tmpdir):
             "bin": [
                 "mesos",
                 "mesos-dir",
-                "mesos-master",
-                "mesos-slave"],
+                "mesos-main",
+                "mesos-subordinate"],
             "lib": ["libmesos.so"],
             "etc": ["dcos-service-configuration.json", "foobar", "some.json"],
             "include": [],
             "dcos.target": None,
-            "dcos.target.wants": ["dcos-mesos-master.service"],
+            "dcos.target.wants": ["dcos-mesos-main.service"],
             "environment": None,
             "environment.export": None,
             "active.old": ["dcos-provider-abcdef-test", "mesos", "mesos-config"],
             "bin.old": [
                 "mesos",
                 "mesos-dir",
-                "mesos-master",
-                "mesos-slave"],
+                "mesos-main",
+                "mesos-subordinate"],
             "lib.old": ["libmesos.so"],
             "etc.old": ["dcos-service-configuration.json", "foobar", "some.json"],
             "include.old": [],
-            "dcos.target.wants.old": ["dcos-mesos-master.service"],
+            "dcos.target.wants.old": ["dcos-mesos-main.service"],
             "environment.old": None,
             "environment.export.old": None,
-            "dcos-mesos-master.service": None       # rooted systemd
+            "dcos-mesos-main.service": None       # rooted systemd
         })
 
     # Should only pickup the packages once / one active set.
@@ -279,7 +279,7 @@ def test_systemd_unit_files(tmpdir):
                 "--no-systemd"
                 ])
 
-    unit_file = 'dcos-mesos-master.service'
+    unit_file = 'dcos-mesos-main.service'
     base_path = '{}/root/{}'.format(tmpdir, unit_file)
     wants_path = '{}/root/dcos.target.wants/{}'.format(tmpdir, unit_file)
 

@@ -23,7 +23,7 @@ def _service_discovery_test(dcos_api_session, docker_network_bridge):
 
     This is achieved by deploying an application to marathon with two instances
     , and ["hostname", "UNIQUE"] constraint set. This should result in containers
-    being deployed to two different slaves.
+    being deployed to two different subordinates.
 
     The application being deployed is a simple http server written in python.
     Please check test_server.py for more details.
@@ -36,7 +36,7 @@ def _service_discovery_test(dcos_api_session, docker_network_bridge):
     fashion.
 
                         +------------------------+   +------------------------+
-                        |          Slave 1       |   |         Slave 2        |
+                        |          Subordinate 1       |   |         Subordinate 2        |
                         |                        |   |                        |
                         | +--------------------+ |   | +--------------------+ |
     +--------------+    | |                    | |   | |                    | |
@@ -72,7 +72,7 @@ def _service_discovery_test(dcos_api_session, docker_network_bridge):
 
     app_definition['instances'] = 2
 
-    if len(dcos_api_session.slaves) < 2:
+    if len(dcos_api_session.subordinates) < 2:
         pytest.skip("Service Discovery Tests require a minimum of two agents.")
 
     app_definition["constraints"] = [["hostname", "UNIQUE"], ]
@@ -121,8 +121,8 @@ def _service_discovery_test(dcos_api_session, docker_network_bridge):
         r_data = r.json()
         assert r_data['reflector_uuid'] == test_uuid
         assert r_data['test_uuid'] == test_uuid
-        if len(dcos_api_session.slaves) >= 2:
-            # When len(slaves)==1, we are connecting through docker-proxy using
+        if len(dcos_api_session.subordinates) >= 2:
+            # When len(subordinates)==1, we are connecting through docker-proxy using
             # docker0 interface ip. This makes this assertion useless, so we skip
             # it and rely on matching test uuid between containers only.
             assert r_data['my_ip'] == service_points[0].host
@@ -333,10 +333,10 @@ def test_if_search_is_working(dcos_api_session):
         # Check that result matches expectations for this dcos_api_session
         expanded_config = test_helpers.get_expanded_config()
         if expanded_config['dns_search']:
-            assert r_data['search_hit_leader'] in dcos_api_session.masters
-            assert r_data['always_hit_leader'] in dcos_api_session.masters
+            assert r_data['search_hit_leader'] in dcos_api_session.mains
+            assert r_data['always_hit_leader'] in dcos_api_session.mains
             assert r_data['always_miss'] == expected_error
         else:  # No dns search, search hit should miss.
             assert r_data['search_hit_leader'] == expected_error
-            assert r_data['always_hit_leader'] in dcos_api_session.masters
+            assert r_data['always_hit_leader'] in dcos_api_session.mains
             assert r_data['always_miss'] == expected_error

@@ -30,20 +30,20 @@ class TestMetrics:
         ids=list(get_static_upstream_annotations().values())
         )
     def test_metrics_prometheus_static_upstreams_annotated(
-            self, master_ar_process, valid_user_header, location, annotation):
+            self, main_ar_process, valid_user_header, location, annotation):
         """
         /nginx/metrics returns metrics in Prometheus format that are properly
         annotated for static upstreams
         """
 
-        url = master_ar_process.make_url_from_path('/nginx/metrics')
+        url = main_ar_process.make_url_from_path('/nginx/metrics')
 
         # We are making an HTTP(s) request to a fixed upstream location.
         # This will cause nginx to apply corresponding annotation
         # label to the upstream metric, regardless of the status of the
         # call. As we are interested only in the label here, we are not
         # checking the status code.
-        upstream_url = master_ar_process.make_url_from_path(location)
+        upstream_url = main_ar_process.make_url_from_path(location)
         requests.get(
             upstream_url,
             allow_redirects=True,

@@ -22,8 +22,8 @@ def get_ip_detect(name):
     return yaml.dump(resource_string('gen', 'ip-detect/{}.sh'.format(name)).decode())
 
 
-def calculate_ip_detect_public_contents(aws_masters_have_public_ip):
-    return get_ip_detect({'true': 'aws_public', 'false': 'aws'}[aws_masters_have_public_ip])
+def calculate_ip_detect_public_contents(aws_mains_have_public_ip):
+    return get_ip_detect({'true': 'aws_public', 'false': 'aws'}[aws_mains_have_public_ip])
 
 
 def validate_provider(provider):
@@ -37,10 +37,10 @@ aws_base_source = Source(entry={
     'default': {
         'platform': 'aws',
         'resolvers': '["169.254.169.253"]',
-        'num_private_slaves': '5',
-        'num_public_slaves': '1',
+        'num_private_subordinates': '5',
+        'num_public_subordinates': '1',
         'os_type': '',
-        'aws_masters_have_public_ip': 'true',
+        'aws_mains_have_public_ip': 'true',
         'enable_docker_gc': 'true'
     },
     'must': {
@@ -52,11 +52,11 @@ aws_base_source = Source(entry={
         'ip6_detect_contents': get_ip_detect('aws6'),
         'exhibitor_explicit_keys': 'false',
         'cluster_name': Late('{ "Ref" : "AWS::StackName" }'),
-        'master_discovery': 'master_http_loadbalancer',
+        'main_discovery': 'main_http_loadbalancer',
         # The cloud_config template variables pertaining to "cloudformation.json"
-        'master_cloud_config': '{{ master_cloud_config }}',
-        'agent_private_cloud_config': '{{ slave_cloud_config }}',
-        'agent_public_cloud_config': '{{ slave_public_cloud_config }}',
+        'main_cloud_config': '{{ main_cloud_config }}',
+        'agent_private_cloud_config': '{{ subordinate_cloud_config }}',
+        'agent_public_cloud_config': '{{ subordinate_public_cloud_config }}',
         # template variable for the generating advanced template cloud configs
         'cloud_config': '{{ cloud_config }}',
         'rexray_config_preset': 'aws',
@@ -218,53 +218,53 @@ late_services = """- name: dcos-cfn-signal.service
     ExecStart=/usr/bin/touch /var/lib/dcos-cfn-signal"""
 
 cf_instance_groups = {
-    'master': {
-        'report_name': 'MasterServerGroup',
-        'roles': ['master', 'aws_master']
+    'main': {
+        'report_name': 'MainServerGroup',
+        'roles': ['main', 'aws_main']
     },
-    'slave': {
-        'report_name': 'SlaveServerGroup',
-        'roles': ['slave']
+    'subordinate': {
+        'report_name': 'SubordinateServerGroup',
+        'roles': ['subordinate']
     },
-    'slave_public': {
-        'report_name': 'PublicSlaveServerGroup',
-        'roles': ['slave_public']
+    'subordinate_public': {
+        'report_name': 'PublicSubordinateServerGroup',
+        'roles': ['subordinate_public']
     }
 }
 
 # TODO(cmaloney): this and cf_instance_groups should be the _same_ dictionary
 # this just being accessing the report-name key.
 aws_advanced_report_names = {
-    'master': 'MasterServerGroup',
+    'main': 'MainServerGroup',
     'pub-agent': 'PublicAgentServerGroup',
     'priv-agent': 'PrivateAgentServerGroup'
 }
 
 groups = {
-    'master': (
-        'master', Source(entry={'must': {
+    'main': (
+        'main', Source(entry={'must': {
             's3_bucket': Late('{ "Ref" : "ExhibitorS3Bucket" }'),
             's3_prefix': Late('{ "Ref" : "AWS::StackName" }'),
             'exhibitor_storage_backend': 'aws_s3',
-            'master_role': Late('{ "Ref" : "MasterRole" }'),
+            'main_role': Late('{ "Ref" : "MainRole" }'),
             'agent_role': '',
-            'exhibitor_address': Late('{ "Fn::GetAtt" : [ "InternalMasterLoadBalancer", "DNSName" ] }'),
-            'has_master_external_loadbalancer': 'true',
-            'master_external_loadbalancer': Late('{ "Fn::GetAtt" : [ "ElasticLoadBalancer", "DNSName" ] }'),
+            'exhibitor_address': Late('{ "Fn::GetAtt" : [ "InternalMainLoadBalancer", "DNSName" ] }'),
+            'has_main_external_loadbalancer': 'true',
+            'main_external_loadbalancer': Late('{ "Fn::GetAtt" : [ "ElasticLoadBalancer", "DNSName" ] }'),
         }})),
     'pub-agent': (
-        'slave_public', Source(entry={'must': {
-            'master_role': '',
+        'subordinate_public', Source(entry={'must': {
+            'main_role': '',
             'agent_role': Late('{ "Ref" : "PublicAgentRole" }'),
             'exhibitor_storage_backend': 'agent_only_group_no_exhibitor',
-            'exhibitor_address': Late('{ "Ref" : "InternalMasterLoadBalancerDnsName" }'),
+            'exhibitor_address': Late('{ "Ref" : "InternalMainLoadBalancerDnsName" }'),
         }})),
     'priv-agent': (
-        'slave', Source(entry={'must': {
-            'master_role': '',
+        'subordinate', Source(entry={'must': {
+            'main_role': '',
             'agent_role': Late('{ "Ref" : "PrivateAgentRole" }'),
             'exhibitor_storage_backend': 'agent_only_group_no_exhibitor',
-            'exhibitor_address': Late('{ "Ref" : "InternalMasterLoadBalancerDnsName" }'),
+            'exhibitor_address': Late('{ "Ref" : "InternalMainLoadBalancerDnsName" }'),
         }}))
 }
 
@@ -412,7 +412,7 @@ def make_advanced_bundle(variant_args, extra_sources, template_name, cc_params):
 
 
 def gen_advanced_template(arguments, variant_prefix, reproducible_artifact_path, os_type):
-    for node_type in ['master', 'priv-agent', 'pub-agent']:
+    for node_type in ['main', 'priv-agent', 'pub-agent']:
         # TODO(cmaloney): This forcibly overwriting arguments might overwrite a user set argument
 
         # without noticing (such as exhibitor_storage_backend)
@@ -430,28 +430,28 @@ def gen_advanced_template(arguments, variant_prefix, reproducible_artifact_path,
         def _as_artifact(filename, bundle):
             yield from _as_artifact_and_pkg(variant_prefix, filename, bundle)
 
-        if node_type == 'master':
-            for num_masters in [1, 3, 5, 7]:
-                master_tk = '{}-{}-{}'.format(os_type, template_key, num_masters)
-                print('Building {} {} for num_masters = {}'.format(os_type, node_type, num_masters))
-                num_masters_source = Source()
-                num_masters_source.add_must('num_masters', str(num_masters))
+        if node_type == 'main':
+            for num_mains in [1, 3, 5, 7]:
+                main_tk = '{}-{}-{}'.format(os_type, template_key, num_mains)
+                print('Building {} {} for num_mains = {}'.format(os_type, node_type, num_mains))
+                num_mains_source = Source()
+                num_mains_source.add_must('num_mains', str(num_mains))
                 bundle = make_advanced_bundle(arguments,
-                                              [node_source, local_source, num_masters_source],
+                                              [node_source, local_source, num_mains_source],
                                               template_name,
                                               deepcopy(params))
-                yield from _as_artifact('{}.json'.format(master_tk), bundle)
+                yield from _as_artifact('{}.json'.format(main_tk), bundle)
 
-                # Zen template corresponding to this number of masters
+                # Zen template corresponding to this number of mains
                 yield _as_cf_artifact(
-                    '{}{}-zen-{}.json'.format(variant_prefix, os_type, num_masters),
+                    '{}{}-zen-{}.json'.format(variant_prefix, os_type, num_mains),
                     render_cloudformation_transform(
                         resource_string("gen", "aws/templates/advanced/zen.json").decode(),
                         variant_prefix=variant_prefix,
                         reproducible_artifact_path=reproducible_artifact_path,
                         **bundle[1].arguments))
         else:
-            local_source.add_must('num_masters', '1')
+            local_source.add_must('num_mains', '1')
             local_source.add_must('nat_ami_mapping', gen_ami_mapping({"natami"}))
             bundle = make_advanced_bundle(arguments,
                                           [node_source, local_source],
@@ -462,16 +462,16 @@ def gen_advanced_template(arguments, variant_prefix, reproducible_artifact_path,
 
 aws_simple_source = Source({
     'must': {
-        'exhibitor_address': Late('{ "Fn::GetAtt" : [ "InternalMasterLoadBalancer", "DNSName" ] }'),
+        'exhibitor_address': Late('{ "Fn::GetAtt" : [ "InternalMainLoadBalancer", "DNSName" ] }'),
         's3_bucket': Late('{ "Ref" : "ExhibitorS3Bucket" }'),
         'exhibitor_storage_backend': 'aws_s3',
-        'master_role': Late('{ "Ref" : "MasterRole" }'),
-        'agent_role': Late('{ "Ref" : "SlaveRole" }'),
+        'main_role': Late('{ "Ref" : "MainRole" }'),
+        'agent_role': Late('{ "Ref" : "SubordinateRole" }'),
         's3_prefix': Late('{ "Ref" : "AWS::StackName" }'),
         'region_to_ami_mapping': gen_ami_mapping({"stable"}),
         'nat_ami_mapping': gen_ami_mapping({"natami"}),
-        'has_master_external_loadbalancer': 'true',
-        'master_external_loadbalancer': Late('{ "Fn::GetAtt" : [ "ElasticLoadBalancer", "DNSName" ] }'),
+        'has_main_external_loadbalancer': 'true',
+        'main_external_loadbalancer': Late('{ "Fn::GetAtt" : [ "ElasticLoadBalancer", "DNSName" ] }'),
     }
 })
 
@@ -491,7 +491,7 @@ def gen_simple_template(variant_prefix, filename, arguments, extra_source):
     # Add general services
     cloud_config = results.utils.add_services(cloud_config, 'coreos')
 
-    # Specialize for master, slave, slave_public
+    # Specialize for main, subordinate, subordinate_public
     variant_cloudconfig = {}
     for variant, params in cf_instance_groups.items():
         cc_variant = deepcopy(cloud_config)
@@ -512,9 +512,9 @@ def gen_simple_template(variant_prefix, filename, arguments, extra_source):
     # Render the cloudformation
     cloudformation = render_cloudformation(
         results.templates['cloudformation.json'],
-        master_cloud_config=variant_cloudconfig['master'],
-        slave_cloud_config=variant_cloudconfig['slave'],
-        slave_public_cloud_config=variant_cloudconfig['slave_public'])
+        main_cloud_config=variant_cloudconfig['main'],
+        subordinate_cloud_config=variant_cloudconfig['subordinate'],
+        subordinate_public_cloud_config=variant_cloudconfig['subordinate_public'])
 
     with logger.scope("Validating CloudFormation"):
         validate_cf(cloudformation)
@@ -523,7 +523,7 @@ def gen_simple_template(variant_prefix, filename, arguments, extra_source):
 
 
 button_template = "<a href='https://console.aws.amazon.com/cloudformation/home?region={region_id}#/stacks/new?templateURL={cloudformation_full_s3_url}/{template_name}.cloudformation.json'><img src='https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png' alt='Launch stack button'></a>"  # noqa
-region_line_template = "<tr><td>{region_name}</td><td>{region_id}</td><td>{single_master_button}</td><td>{multi_master_button}</td></tr>"  # noqa
+region_line_template = "<tr><td>{region_name}</td><td>{region_id}</td><td>{single_main_button}</td><td>{multi_main_button}</td></tr>"  # noqa
 
 
 def gen_buttons(build_name, reproducible_artifact_path, tag, commit, variant_arguments):
@@ -547,8 +547,8 @@ def gen_buttons(build_name, reproducible_artifact_path, tag, commit, variant_arg
             button_line += region_line_template.format(
                 region_name=region['name'],
                 region_id=region['id'],
-                single_master_button=get_button(variant_prefix + 'single-master', s3_url=s3_url),
-                multi_master_button=get_button(variant_prefix + 'multi-master', s3_url=s3_url))
+                single_main_button=get_button(variant_prefix + 'single-main', s3_url=s3_url),
+                multi_main_button=get_button(variant_prefix + 'multi-main', s3_url=s3_url))
 
         regular_buttons.append(button_line)
 
@@ -564,25 +564,25 @@ def gen_buttons(build_name, reproducible_artifact_path, tag, commit, variant_arg
 
 
 def do_create(tag, build_name, reproducible_artifact_path, commit, variant_arguments, all_completes):
-    # Generate the single-master and multi-master templates.
+    # Generate the single-main and multi-main templates.
 
     for bootstrap_variant, variant_base_args in variant_arguments.items():
         variant_prefix = pkgpanda.util.variant_prefix(bootstrap_variant)
 
-        def make(num_masters, filename):
-            num_masters_source = Source()
-            num_masters_source.add_must('num_masters', str(num_masters))
+        def make(num_mains, filename):
+            num_mains_source = Source()
+            num_mains_source.add_must('num_mains', str(num_mains))
             yield from gen_simple_template(
                 variant_prefix,
                 filename,
                 variant_base_args,
-                num_masters_source)
+                num_mains_source)
 
-        # Single master templates
-        yield from make(1, 'single-master.cloudformation.json')
+        # Single main templates
+        yield from make(1, 'single-main.cloudformation.json')
 
-        # Multi master templates
-        yield from make(3, 'multi-master.cloudformation.json')
+        # Multi main templates
+        yield from make(3, 'multi-main.cloudformation.json')
 
         # Advanced templates
         for os_type in ['coreos', 'el7']:

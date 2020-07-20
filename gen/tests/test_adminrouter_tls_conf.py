@@ -16,13 +16,13 @@ class TestAdminRouterTLSConfig:
 
     # TODO: DCOS_OSS-3463 - muted Windows tests requiring investigation
     @pytest.mark.skipif(pkgpanda.util.is_windows, reason="test fails on Windows reason unknown")
-    def test_master_default(self):
+    def test_main_default(self):
         """
-        Test that Master Admin Router config file has the correct default
+        Test that Main Admin Router config file has the correct default
         `ssl_ciphers` and `ssl_protocols` values. Defaults are present in
         `dcos-config.yaml` file and in `calc.py`.
         """
-        config_path = '/etc/adminrouter-tls-master.conf'
+        config_path = '/etc/adminrouter-tls-main.conf'
         arguments = make_arguments(new_arguments={})
         generated = gen.generate(arguments=arguments)
         package = generated.templates['dcos-config.yaml']['package']
@@ -84,7 +84,7 @@ class TestAdminRouterTLSConfig:
     @pytest.mark.skipif(pkgpanda.util.is_windows, reason="test fails on Windows reason unknown")
     def test_agent_cannot_be_configured(self, tls_versions, ciphers):
         """
-        Agent Admin Router configuration is not affected by changing Master
+        Agent Admin Router configuration is not affected by changing Main
         Admin Router TLS version or TLS cipher suites configuration.
         """
         config_path = '/etc/adminrouter-tls-agent.conf'
@@ -114,7 +114,7 @@ class TestSetCipherOverride:
 
     To test manually, either use `openssl s_client` commands or sslscan
     [https://github.com/rbsec/sslscan] against running cluster Admin Router
-    on master or agent nodes.
+    on main or agent nodes.
     """
 
     def supported_ssl_ciphers(
@@ -145,7 +145,7 @@ class TestSetCipherOverride:
         ciphers = ssl_ciphers_line.split()[1:]
         return ciphers
 
-    def supported_ssl_ciphers_master(
+    def supported_ssl_ciphers_main(
             self,
             new_config_arguments: Dict[str, str]) -> List[str]:
         """
@@ -156,7 +156,7 @@ class TestSetCipherOverride:
             new_config_arguments: Arguments which are added to the 'standard'
                 set of arguments before generating configuration files.
         """
-        config_path = '/etc/adminrouter-tls-master.conf'
+        config_path = '/etc/adminrouter-tls-main.conf'
         return self.supported_ssl_ciphers(new_config_arguments, config_path)
 
     def supported_ssl_ciphers_agent(
@@ -199,26 +199,26 @@ class TestSetCipherOverride:
 
     # TODO: DCOS_OSS-3463 - muted Windows tests requiring investigation
     @pytest.mark.skipif(pkgpanda.util.is_windows, reason="test fails on Windows reason unknown")
-    def test_cipher_master_default(self):
+    def test_cipher_main_default(self):
         """
-        If `adminrouter_tls_cipher_suite` is not overridden the Master Admin
+        If `adminrouter_tls_cipher_suite` is not overridden the Main Admin
         Router is configured with default cipher suite.
         """
         new_arguments = {'adminrouter_tls_cipher_suite': ''}
-        ciphers = self.supported_ssl_ciphers_master(
+        ciphers = self.supported_ssl_ciphers_main(
             new_config_arguments=new_arguments,
         )
         assert ciphers == ['EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:!MD5:!3DES']
 
     # TODO: DCOS_OSS-3463 - muted Windows tests requiring investigation
     @pytest.mark.skipif(pkgpanda.util.is_windows, reason="test fails on Windows reason unknown")
-    def test_cipher_master_custom(self):
+    def test_cipher_main_custom(self):
         """
-        Setting `adminrouter_tls_cipher_suite` overrides Master Admin Router
+        Setting `adminrouter_tls_cipher_suite` overrides Main Admin Router
         TLS configuration.
         """
         new_arguments = {'adminrouter_tls_cipher_suite': 'EECDH+AES128:RSA+AES128'}
-        ciphers = self.supported_ssl_ciphers_master(
+        ciphers = self.supported_ssl_ciphers_main(
             new_config_arguments=new_arguments,
         )
         assert ciphers == ['EECDH+AES128:RSA+AES128']
@@ -232,7 +232,7 @@ class TestToggleTLSVersions:
     details.
     """
 
-    def supported_tls_protocols_ar_master(
+    def supported_tls_protocols_ar_main(
             self, new_config_arguments: Dict[str, str]) -> List[str]:
         """
         This finds a line which looks like the following:
@@ -250,7 +250,7 @@ class TestToggleTLSVersions:
         arguments = make_arguments(new_arguments=new_config_arguments)
         generated = gen.generate(arguments=arguments)
         package = generated.templates['dcos-config.yaml']['package']
-        config_path = '/etc/adminrouter-tls-master.conf'
+        config_path = '/etc/adminrouter-tls-main.conf'
         [config] = [item for item in package if item['path'] == config_path]
         [ssl_protocols_line] = [
             line for line in config['content'].split('\n') if
@@ -281,15 +281,15 @@ class TestToggleTLSVersions:
 
     # TODO: DCOS_OSS-3463 - muted Windows tests requiring investigation
     @pytest.mark.skipif(pkgpanda.util.is_windows, reason="test fails on Windows reason unknown")
-    def test_default_master(self):
+    def test_default_main(self):
         """
         By default TLS 1.0 is disabled, and therefore by default the config
         variable is set to 'false'.
         """
-        default_protocols = self.supported_tls_protocols_ar_master(
+        default_protocols = self.supported_tls_protocols_ar_main(
             new_config_arguments={},
         )
-        disable_tls1_protocols = self.supported_tls_protocols_ar_master(
+        disable_tls1_protocols = self.supported_tls_protocols_ar_main(
             new_config_arguments={'adminrouter_tls_1_0_enabled': 'false',
                                   'adminrouter_tls_1_1_enabled': 'false'},
         )
@@ -312,7 +312,7 @@ class TestToggleTLSVersions:
         new_arguments = {'adminrouter_tls_1_0_enabled': enabled[0],
                          'adminrouter_tls_1_1_enabled': enabled[1],
                          'adminrouter_tls_1_2_enabled': enabled[2]}
-        protocols = self.supported_tls_protocols_ar_master(
+        protocols = self.supported_tls_protocols_ar_main(
             new_config_arguments=new_arguments,
         )
         assert protocols == expected_protocols

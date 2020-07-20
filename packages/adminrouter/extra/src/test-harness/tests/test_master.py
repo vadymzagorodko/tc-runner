@@ -24,11 +24,11 @@ log = logging.getLogger(__name__)
 class TestServiceEndpoint:
     # Majority of /service endpoint tests are done with generic tests framework
     def test_if_accept_encoding_header_is_in_upstream_request(
-            self, master_ar_process_perclass, mocker, valid_user_header):
+            self, main_ar_process_perclass, mocker, valid_user_header):
         headers = copy.deepcopy(valid_user_header)
         headers['Accept-Encoding'] = 'gzip'
 
-        generic_upstream_headers_verify_test(master_ar_process_perclass,
+        generic_upstream_headers_verify_test(main_ar_process_perclass,
                                              headers,
                                              '/service/scheduler-alwaysthere/foo/bar/',
                                              assert_headers={'Accept-Encoding': 'gzip'},
@@ -38,11 +38,11 @@ class TestServiceEndpoint:
 class TestAgentEndpoint:
     # Tests for /agent endpoint routing are done in test_cache.py
     def test_if_accept_encoding_header_is_removed_from_upstream_request(
-            self, master_ar_process_perclass, mocker, valid_user_header):
+            self, main_ar_process_perclass, mocker, valid_user_header):
         headers = copy.deepcopy(valid_user_header)
         headers['Accept-Encoding'] = 'gzip'
 
-        generic_upstream_headers_verify_test(master_ar_process_perclass,
+        generic_upstream_headers_verify_test(main_ar_process_perclass,
                                              headers,
                                              '/agent/de1baf83-c36c-4d23-9cb0-f89f596cd6ab-S1/',
                                              assert_headers_absent=["Accept-Encoding"],
@@ -52,12 +52,12 @@ class TestAgentEndpoint:
 class TestSystemAgentEndpoint:
     # Tests for /agent endpoint routing are done in test_cache.py
     def test_if_accept_encoding_header_is_removed_from_upstream_request(
-            self, master_ar_process_perclass, mocker, valid_user_header):
+            self, main_ar_process_perclass, mocker, valid_user_header):
         headers = copy.deepcopy(valid_user_header)
         headers['Accept-Encoding'] = 'gzip'
 
         generic_upstream_headers_verify_test(
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             headers,
             '/system/v1/agent/de1baf83-c36c-4d23-9cb0-f89f596cd6ab-S0/logs',
             assert_headers_absent=["Accept-Encoding"],
@@ -166,8 +166,8 @@ class TestHistoryServiceRouting:
 class TestMetadata:
     @pytest.mark.parametrize("public_ip", ['1.2.3.4', "10.20.20.30"])
     def test_if_public_ip_detection_works(
-            self, master_ar_process_perclass, valid_user_header, public_ip):
-        url = master_ar_process_perclass.make_url_from_path('/metadata')
+            self, main_ar_process_perclass, valid_user_header, public_ip):
+        url = main_ar_process_perclass.make_url_from_path('/metadata')
 
         with overridden_file_content(
                 '/usr/local/detect_ip_public_data.txt',
@@ -182,8 +182,8 @@ class TestMetadata:
         assert resp_data['PUBLIC_IPV4'] == public_ip
 
     def test_if_clusterid_is_returned(
-            self, master_ar_process_perclass, valid_user_header):
-        url = master_ar_process_perclass.make_url_from_path('/metadata')
+            self, main_ar_process_perclass, valid_user_header):
+        url = main_ar_process_perclass.make_url_from_path('/metadata')
 
         resp = requests.get(
             url,
@@ -207,8 +207,8 @@ class TestMetadata:
         assert resp_data['CLUSTER_ID'] == "fd21689b-4fe2-4779-8c30-9125149eef11"
 
     def test_if_missing_clusterid_file_is_handled(
-            self, master_ar_process_perclass, valid_user_header):
-        url = master_ar_process_perclass.make_url_from_path('/metadata')
+            self, main_ar_process_perclass, valid_user_header):
+        url = main_ar_process_perclass.make_url_from_path('/metadata')
 
         with overridden_file_content('/var/lib/dcos/cluster-id'):
             os.unlink('/var/lib/dcos/cluster-id')
@@ -222,15 +222,15 @@ class TestMetadata:
         assert 'CLUSTER_ID' not in resp_data
 
     def test_if_public_ip_detect_script_failue_is_handled(
-            self, master_ar_process_perclass, valid_user_header):
-        url = master_ar_process_perclass.make_url_from_path('/metadata')
+            self, main_ar_process_perclass, valid_user_header):
+        url = main_ar_process_perclass.make_url_from_path('/metadata')
         filter_regexp = {
             'Traceback \(most recent call last\):': SearchCriteria(1, True),
             ("FileNotFoundError: \[Errno 2\] No such file or directory:"
              " '/usr/local/detect_ip_public_data.txt'"): SearchCriteria(1, True),
         }
         lbf = LineBufferFilter(filter_regexp,
-                               line_buffer=master_ar_process_perclass.stderr_line_buffer)
+                               line_buffer=main_ar_process_perclass.stderr_line_buffer)
 
         with lbf, overridden_file_content('/usr/local/detect_ip_public_data.txt'):
             os.unlink('/usr/local/detect_ip_public_data.txt')
@@ -246,8 +246,8 @@ class TestMetadata:
 
     @pytest.mark.xfail(reason="Needs some refactoring, tracked in DCOS_OSS-1007")
     def test_if_public_ip_detect_script_execution_is_timed_out(
-            self, master_ar_process_perclass, valid_user_header):
-        url = master_ar_process_perclass.make_url_from_path('/metadata')
+            self, main_ar_process_perclass, valid_user_header):
+        url = main_ar_process_perclass.make_url_from_path('/metadata')
 
         ts_start = time.time()
         with overridden_file_content('/usr/local/detect_ip_public_data.txt',
@@ -266,8 +266,8 @@ class TestMetadata:
 
     @pytest.mark.xfail(reason="Needs some refactoring, tracked in DCOS_OSS-1007")
     def test_if_public_ip_detect_script_nonzero_exit_status_is_handled(
-            self, master_ar_process_perclass, valid_user_header):
-        url = master_ar_process_perclass.make_url_from_path('/metadata')
+            self, main_ar_process_perclass, valid_user_header):
+        url = main_ar_process_perclass.make_url_from_path('/metadata')
 
         with overridden_file_content(
                 '/usr/local/detect_ip_public_data.txt',
@@ -288,12 +288,12 @@ class TestUiRoot:
                                       "nest1/nested-ui-testfile.html"])
     def test_if_ui_files_are_handled(
             self,
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             valid_user_header,
             uniq_content,
             path):
 
-        url = master_ar_process_perclass.make_url_from_path('/{}'.format(path))
+        url = main_ar_process_perclass.make_url_from_path('/{}'.format(path))
 
         with overridden_file_content(
                 '/var/lib/dcos/dcos-ui-update-service/dist/ui/{}'.format(path),
@@ -312,8 +312,8 @@ class TestUiRoot:
 class TestMisc:
     @pytest.mark.parametrize("content", ["{'data': '1234'}", "{'data': 'abcd'}"])
     def test_if_buildinfo_is_served(
-            self, master_ar_process_perclass, valid_user_header, content):
-        url = master_ar_process_perclass.make_url_from_path(
+            self, main_ar_process_perclass, valid_user_header, content):
+        url = main_ar_process_perclass.make_url_from_path(
             '/pkgpanda/active.buildinfo.full.json')
 
         with overridden_file_content(
@@ -330,8 +330,8 @@ class TestMisc:
 
     @pytest.mark.parametrize("content", ["{'data': '1234'}", "{'data': 'abcd'}"])
     def test_if_dcos_metadata_is_served(
-            self, master_ar_process_perclass, valid_user_header, content):
-        url = master_ar_process_perclass.make_url_from_path(
+            self, main_ar_process_perclass, valid_user_header, content):
+        url = main_ar_process_perclass.make_url_from_path(
             '/dcos-metadata/dcos-version.json')
 
         with overridden_file_content(
@@ -348,7 +348,7 @@ class TestMisc:
 
     def test_if_xaccel_header_is_passed_to_client_by_ar(
             self,
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             valid_user_header,
             mocker):
 
@@ -361,7 +361,7 @@ class TestMisc:
         )
 
         generic_verify_response_test(
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             valid_user_header,
             '/system/v1/logs/foo/bar',
             assert_headers=accel_buff_header)

@@ -29,8 +29,8 @@ def test_dcos_diagnostics_health(dcos_api_session):
     required_fields = ['units', 'hostname', 'ip', 'dcos_version', 'node_role', 'mesos_id', 'dcos_diagnostics_version']
     required_fields_unit = ['id', 'health', 'output', 'description', 'help', 'name']
 
-    # Check all masters dcos-diagnostics instances on base port since this is extra-cluster request (outside localhost)
-    for host in dcos_api_session.masters:
+    # Check all mains dcos-diagnostics instances on base port since this is extra-cluster request (outside localhost)
+    for host in dcos_api_session.mains:
         response = check_json(dcos_api_session.health.get('/', node=host))
         assert len(response) == len(required_fields), 'response must have the following fields: {}'.format(
             ', '.join(required_fields)
@@ -58,7 +58,7 @@ def test_dcos_diagnostics_health(dcos_api_session):
             assert response[required_field], '{} cannot be empty'.format(required_field)
 
     # Check all agents running dcos-diagnostics behind agent-adminrouter on 61001
-    for host in dcos_api_session.slaves:
+    for host in dcos_api_session.subordinates:
         response = check_json(dcos_api_session.health.get('/', node=host))
         assert len(response) == len(required_fields), 'response must have the following fields: {}'.format(
             ', '.join(required_fields)
@@ -92,14 +92,14 @@ def test_dcos_diagnostics_nodes(dcos_api_session):
     """
     test a list of nodes with statuses endpoint /system/health/v1/nodes
     """
-    for master in dcos_api_session.masters:
-        response = check_json(dcos_api_session.health.get('/nodes', node=master))
+    for main in dcos_api_session.mains:
+        response = check_json(dcos_api_session.health.get('/nodes', node=main))
         assert len(response) == 1, 'nodes response must have only one field: nodes'
         assert 'nodes' in response
         assert isinstance(response['nodes'], list)
-        assert len(response['nodes']) == len(dcos_api_session.masters + dcos_api_session.all_slaves), \
+        assert len(response['nodes']) == len(dcos_api_session.mains + dcos_api_session.all_subordinates), \
             ('a number of nodes in response must be {}'.
-             format(len(dcos_api_session.masters + dcos_api_session.all_slaves)))
+             format(len(dcos_api_session.mains + dcos_api_session.all_subordinates)))
 
         # test nodes
         validate_node(response['nodes'])
@@ -110,13 +110,13 @@ def test_dcos_diagnostics_nodes_node(dcos_api_session):
     """
     test a specific node enpoint /system/health/v1/nodes/<node>
     """
-    for master in dcos_api_session.masters:
+    for main in dcos_api_session.mains:
         # get a list of nodes
-        response = check_json(dcos_api_session.health.get('/nodes', node=master))
+        response = check_json(dcos_api_session.health.get('/nodes', node=main))
         nodes = list(map(lambda node: node['host_ip'], response['nodes']))
 
         for node in nodes:
-            node_response = check_json(dcos_api_session.health.get('/nodes/{}'.format(node), node=master))
+            node_response = check_json(dcos_api_session.health.get('/nodes/{}'.format(node), node=main))
             validate_node([node_response])
 
 
@@ -125,13 +125,13 @@ def test_dcos_diagnostics_nodes_node_units(dcos_api_session):
     """
     test a list of units from a specific node, endpoint /system/health/v1/nodes/<node>/units
     """
-    for master in dcos_api_session.masters:
+    for main in dcos_api_session.mains:
         # get a list of nodes
-        response = check_json(dcos_api_session.health.get('/nodes', node=master))
+        response = check_json(dcos_api_session.health.get('/nodes', node=main))
         nodes = list(map(lambda node: node['host_ip'], response['nodes']))
 
         for node in nodes:
-            units_response = check_json(dcos_api_session.health.get('/nodes/{}/units'.format(node), node=master))
+            units_response = check_json(dcos_api_session.health.get('/nodes/{}/units'.format(node), node=main))
 
             assert len(units_response) == 1, 'unit response should have only 1 field `units`'
             assert 'units' in units_response
@@ -143,16 +143,16 @@ def test_dcos_diagnostics_nodes_node_units_unit(dcos_api_session):
     """
     test a specific unit for a specific node, endpoint /system/health/v1/nodes/<node>/units/<unit>
     """
-    for master in dcos_api_session.masters:
-        response = check_json(dcos_api_session.health.get('/nodes', node=master))
+    for main in dcos_api_session.mains:
+        response = check_json(dcos_api_session.health.get('/nodes', node=main))
         nodes = list(map(lambda node: node['host_ip'], response['nodes']))
         for node in nodes:
-            units_response = check_json(dcos_api_session.health.get('/nodes/{}/units'.format(node), node=master))
+            units_response = check_json(dcos_api_session.health.get('/nodes/{}/units'.format(node), node=main))
             unit_ids = list(map(lambda unit: unit['id'], units_response['units']))
 
             for unit_id in unit_ids:
                 validate_unit(
-                    check_json(dcos_api_session.health.get('/nodes/{}/units/{}'.format(node, unit_id), node=master)))
+                    check_json(dcos_api_session.health.get('/nodes/{}/units/{}'.format(node, unit_id), node=main)))
 
 
 @pytest.mark.supportedwindows
@@ -163,19 +163,19 @@ def test_dcos_diagnostics_units(dcos_api_session):
     """
     # get all unique unit names
     all_units = set()
-    for node in dcos_api_session.masters:
+    for node in dcos_api_session.mains:
         node_response = check_json(dcos_api_session.health.get('/', node=node))
         for unit in node_response['units']:
             all_units.add(unit['id'])
 
-    for node in dcos_api_session.all_slaves:
+    for node in dcos_api_session.all_subordinates:
         node_response = check_json(dcos_api_session.health.get('/', node=node))
         for unit in node_response['units']:
             all_units.add(unit['id'])
 
-    # test against masters
-    for master in dcos_api_session.masters:
-        units_response = check_json(dcos_api_session.health.get('/units', node=master))
+    # test against mains
+    for main in dcos_api_session.mains:
+        units_response = check_json(dcos_api_session.health.get('/units', node=main))
         validate_units(units_response['units'])
 
         pulled_units = list(map(lambda unit: unit['id'], units_response['units']))
@@ -193,8 +193,8 @@ def test_systemd_units_health(dcos_api_session):
     meaning it focuses on making sure the dcos_api_session is healthy, rather then testing dcos-diagnostics itself.
     """
     unhealthy_output = []
-    assert dcos_api_session.masters, "Must have at least 1 master node"
-    report_response = check_json(dcos_api_session.health.get('/report', node=dcos_api_session.masters[0]))
+    assert dcos_api_session.mains, "Must have at least 1 main node"
+    report_response = check_json(dcos_api_session.health.get('/report', node=dcos_api_session.mains[0]))
     assert 'Units' in report_response, "Missing `Units` field in response"
     for unit_name, unit_props in report_response['Units'].items():
         assert 'Health' in unit_props, "Unit {} missing `Health` field".format(unit_name)
@@ -222,11 +222,11 @@ def test_dcos_diagnostics_units_unit(dcos_api_session):
     """
     test a unit response in a right format, endpoint: /system/health/v1/units/<unit>
     """
-    for master in dcos_api_session.masters:
-        units_response = check_json(dcos_api_session.health.get('/units', node=master))
+    for main in dcos_api_session.mains:
+        units_response = check_json(dcos_api_session.health.get('/units', node=main))
         pulled_units = list(map(lambda unit: unit['id'], units_response['units']))
         for unit in pulled_units:
-            unit_response = check_json(dcos_api_session.health.get('/units/{}'.format(unit), node=master))
+            unit_response = check_json(dcos_api_session.health.get('/units/{}'.format(unit), node=main))
             validate_units([unit_response])
 
 
@@ -247,31 +247,31 @@ def test_dcos_diagnostics_units_unit_nodes(dcos_api_session):
             nodes.append(nodes_ip_map.get(node['host_ip']))
         return nodes
 
-    for master in dcos_api_session.masters:
-        units_response = check_json(dcos_api_session.health.get('/units', node=master))
+    for main in dcos_api_session.mains:
+        units_response = check_json(dcos_api_session.health.get('/units', node=main))
         pulled_units = list(map(lambda unit: unit['id'], units_response['units']))
         for unit in pulled_units:
-            nodes_response = check_json(dcos_api_session.health.get('/units/{}/nodes'.format(unit), node=master))
+            nodes_response = check_json(dcos_api_session.health.get('/units/{}/nodes'.format(unit), node=main))
             validate_node(nodes_response['nodes'])
 
-        # make sure dcos-mesos-master.service has master nodes and dcos-mesos-slave.service has agent nodes
-        master_nodes_response = check_json(
-            dcos_api_session.health.get('/units/dcos-mesos-master.service/nodes', node=master))
+        # make sure dcos-mesos-main.service has main nodes and dcos-mesos-subordinate.service has agent nodes
+        main_nodes_response = check_json(
+            dcos_api_session.health.get('/units/dcos-mesos-main.service/nodes', node=main))
 
-        master_nodes = get_nodes_from_response(master_nodes_response)
+        main_nodes = get_nodes_from_response(main_nodes_response)
 
-        assert len(master_nodes) == len(dcos_api_session.masters), \
-            '{} != {}'.format(master_nodes, dcos_api_session.masters)
-        assert set(master_nodes) == set(dcos_api_session.masters), 'a list of difference: {}'.format(
-            set(master_nodes).symmetric_difference(set(dcos_api_session.masters))
+        assert len(main_nodes) == len(dcos_api_session.mains), \
+            '{} != {}'.format(main_nodes, dcos_api_session.mains)
+        assert set(main_nodes) == set(dcos_api_session.mains), 'a list of difference: {}'.format(
+            set(main_nodes).symmetric_difference(set(dcos_api_session.mains))
         )
 
         agent_nodes_response = check_json(
-            dcos_api_session.health.get('/units/dcos-mesos-slave.service/nodes', node=master))
+            dcos_api_session.health.get('/units/dcos-mesos-subordinate.service/nodes', node=main))
 
         agent_nodes = get_nodes_from_response(agent_nodes_response)
 
-        assert len(agent_nodes) == len(dcos_api_session.slaves), '{} != {}'.format(agent_nodes, dcos_api_session.slaves)
+        assert len(agent_nodes) == len(dcos_api_session.subordinates), '{} != {}'.format(agent_nodes, dcos_api_session.subordinates)
 
 
 @pytest.mark.supportedwindows
@@ -281,16 +281,16 @@ def test_dcos_diagnostics_units_unit_nodes_node(dcos_api_session):
     """
     required_node_fields = ['host_ip', 'health', 'role', 'output', 'help']
 
-    for master in dcos_api_session.masters:
-        units_response = check_json(dcos_api_session.health.get('/units', node=master))
+    for main in dcos_api_session.mains:
+        units_response = check_json(dcos_api_session.health.get('/units', node=main))
         pulled_units = list(map(lambda unit: unit['id'], units_response['units']))
         for unit in pulled_units:
-            nodes_response = check_json(dcos_api_session.health.get('/units/{}/nodes'.format(unit), node=master))
+            nodes_response = check_json(dcos_api_session.health.get('/units/{}/nodes'.format(unit), node=main))
             pulled_nodes = list(map(lambda node: node['host_ip'], nodes_response['nodes']))
             logging.info('pulled nodes: {}'.format(pulled_nodes))
             for node in pulled_nodes:
                 node_response = check_json(
-                    dcos_api_session.health.get('/units/{}/nodes/{}'.format(unit, node), node=master))
+                    dcos_api_session.health.get('/units/{}/nodes/{}'.format(unit, node), node=main))
                 assert len(node_response) == len(required_node_fields), 'required fields: {}'.format(
                     ', '.format(required_node_fields)
                 )
@@ -310,8 +310,8 @@ def test_dcos_diagnostics_report(dcos_api_session):
     """
     test dcos-diagnostics report endpoint /system/health/v1/report
     """
-    for master in dcos_api_session.masters:
-        report_response = check_json(dcos_api_session.health.get('/report', node=master))
+    for main in dcos_api_session.mains:
+        report_response = check_json(dcos_api_session.health.get('/report', node=main))
         assert 'Units' in report_response
         assert len(report_response['Units']) > 0
 
@@ -332,8 +332,8 @@ def test_dcos_diagnostics_bundle_create_download_delete(dcos_api_session, use_le
 
     diagnostics = Diagnostics(
         default_url=health_url,
-        masters=dcos_api_session.masters,
-        all_slaves=dcos_api_session.all_slaves,
+        mains=dcos_api_session.mains,
+        all_subordinates=dcos_api_session.all_subordinates,
         session=dcos_api_session.copy().session,
         use_legacy_api=use_legacy_api,
     )
@@ -343,7 +343,7 @@ def test_dcos_diagnostics_bundle_create_download_delete(dcos_api_session, use_le
         bundle = _create_bundle(diagnostics)
         _check_diagnostics_bundle_status(dcos_api_session)
         _download_and_extract_bundle(dcos_api_session, bundle, diagnostics)
-        _download_and_extract_bundle_from_another_master(dcos_api_session, bundle, diagnostics)
+        _download_and_extract_bundle_from_another_main(dcos_api_session, bundle, diagnostics)
         _delete_bundle(diagnostics, bundle)
 
 
@@ -392,20 +392,20 @@ def _delete_bundle(diagnostics: Diagnostics, bundle):
 
 
 def _download_and_extract_bundle(dcos_api_session, bundle, diagnostics):
-    _download_bundle_from_master(dcos_api_session, 0, bundle, diagnostics)
+    _download_bundle_from_main(dcos_api_session, 0, bundle, diagnostics)
 
 
-def _download_and_extract_bundle_from_another_master(dcos_api_session, bundle, diagnostics,):
-    if len(dcos_api_session.masters) > 1:
-        _download_bundle_from_master(dcos_api_session, 1, bundle, diagnostics)
+def _download_and_extract_bundle_from_another_main(dcos_api_session, bundle, diagnostics,):
+    if len(dcos_api_session.mains) > 1:
+        _download_bundle_from_main(dcos_api_session, 1, bundle, diagnostics)
 
 
-def _download_bundle_from_master(dcos_api_session, master_index, bundle, diagnostics):
-    """ Download DC/OS diagnostics bundle from a master
+def _download_bundle_from_main(dcos_api_session, main_index, bundle, diagnostics):
+    """ Download DC/OS diagnostics bundle from a main
 
     :param dcos_api_session: dcos_api_session fixture
-    :param master_index: master index from dcos_api_session.masters array
-    :param bundle: bundle name to download from master
+    :param main_index: main index from dcos_api_session.mains array
+    :param bundle: bundle name to download from main
     :param diagnostics: DCOS Diagnostics client
     """
     bundles = diagnostics.get_diagnostics_reports()
@@ -442,18 +442,18 @@ def _download_bundle_from_master(dcos_api_session, master_index, bundle, diagnos
                              'sysctl_-a.output',
                              ]
 
-    # these files are expected to be in archive for a master host
-    expected_master_files = [
-        'binsh_-c_cat proc`systemctl show dcos-mesos-master.service -p MainPID| cut -d\'=\' -f2`environ.output',
+    # these files are expected to be in archive for a main host
+    expected_main_files = [
+        'binsh_-c_cat proc`systemctl show dcos-mesos-main.service -p MainPID| cut -d\'=\' -f2`environ.output',
         '5050-quota.json',
-        '5050-overlay-master_state.json',
-        'dcos-mesos-master.service',
+        '5050-overlay-main_state.json',
+        'dcos-mesos-main.service',
         'var/lib/dcos/exhibitor/zookeeper/snapshot/myid',
         'var/lib/dcos/exhibitor/conf/zoo.cfg',
-        'var/lib/dcos/mesos/log/mesos-master.log',
-        'var/lib/dcos/mesos/log/mesos-master.log.1',
-        'var/lib/dcos/mesos/log/mesos-master.log.2.gz',
-        'var/lib/dcos/mesos/log/mesos-master.log.3.gz',
+        'var/lib/dcos/mesos/log/mesos-main.log',
+        'var/lib/dcos/mesos/log/mesos-main.log.1',
+        'var/lib/dcos/mesos/log/mesos-main.log.2.gz',
+        'var/lib/dcos/mesos/log/mesos-main.log.3.gz',
     ] + expected_common_files
 
     expected_agent_common_files = [
@@ -467,14 +467,14 @@ def _download_bundle_from_master(dcos_api_session, master_index, bundle, diagnos
 
     # for agent host
     expected_agent_files = [
-        'dcos-mesos-slave.service',
-        'binsh_-c_cat proc`systemctl show dcos-mesos-slave.service -p MainPID| cut -d\'=\' -f2`environ.output'
+        'dcos-mesos-subordinate.service',
+        'binsh_-c_cat proc`systemctl show dcos-mesos-subordinate.service -p MainPID| cut -d\'=\' -f2`environ.output'
     ] + expected_agent_common_files + expected_common_files
 
     # for public agent host
     expected_public_agent_files = [
-        'dcos-mesos-slave-public.service',
-        'binsh_-c_cat proc`systemctl show dcos-mesos-slave-public.service -p MainPID| cut -d\'=\' -f2`environ.output'
+        'dcos-mesos-subordinate-public.service',
+        'binsh_-c_cat proc`systemctl show dcos-mesos-subordinate-public.service -p MainPID| cut -d\'=\' -f2`environ.output'
     ] + expected_agent_common_files + expected_common_files
 
     def _read_from_zip(z: zipfile.ZipFile, item: str, to_json=True):
@@ -515,7 +515,7 @@ def _download_bundle_from_master(dcos_api_session, master_index, bundle, diagnos
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         bundle_full_location = os.path.join(tmp_dir, bundle)
-        diagnostics.download_diagnostics_reports([bundle], tmp_dir, dcos_api_session.masters[master_index])
+        diagnostics.download_diagnostics_reports([bundle], tmp_dir, dcos_api_session.mains[main_index])
 
         # validate bundle zip file.
         assert zipfile.is_zipfile(bundle_full_location)
@@ -529,50 +529,50 @@ def _download_bundle_from_master(dcos_api_session, master_index, bundle, diagnos
             log_data = _read_from_zip(z, 'summaryErrorsReport.txt', to_json=False)
             raise AssertionError('summaryErrorsReport.txt must be empty. Got {}'.format(log_data))
 
-        # make sure all required log files for master node are in place.
-        for master_ip in dcos_api_session.masters:
-            master_folder = master_ip + '_master/'
+        # make sure all required log files for main node are in place.
+        for main_ip in dcos_api_session.mains:
+            main_folder = main_ip + '_main/'
 
             # try to load dcos-diagnostics health report and validate the report is for this host
-            health_report = _get_dcos_diagnostics_health(z, master_folder + 'dcos-diagnostics-health.json')
+            health_report = _get_dcos_diagnostics_health(z, main_folder + 'dcos-diagnostics-health.json')
             assert 'ip' in health_report
-            assert health_report['ip'] == master_ip
+            assert health_report['ip'] == main_ip
 
             # make sure systemd unit output is correct and does not contain error message
-            unit_output = get_file_content(master_folder + 'dcos-mesos-master.service', z)
+            unit_output = get_file_content(main_folder + 'dcos-mesos-main.service', z)
             verify_unit_response(unit_output, 100)
 
-            verify_archived_items(master_folder, archived_items, expected_master_files)
+            verify_archived_items(main_folder, archived_items, expected_main_files)
 
-            state_output = get_file_content(master_folder + '5050-master_state.json', z)
+            state_output = get_file_content(main_folder + '5050-main_state.json', z)
             validate_state(state_output)
 
         # make sure all required log files for agent node are in place.
-        for slave_ip in dcos_api_session.slaves:
-            agent_folder = slave_ip + '_agent/'
+        for subordinate_ip in dcos_api_session.subordinates:
+            agent_folder = subordinate_ip + '_agent/'
 
             # try to load dcos-diagnostics health report and validate the report is for this host
             health_report = _get_dcos_diagnostics_health(z, agent_folder + 'dcos-diagnostics-health.json')
             assert 'ip' in health_report
-            assert health_report['ip'] == slave_ip
+            assert health_report['ip'] == subordinate_ip
 
             # make sure systemd unit output is correct and does not contain error message
-            unit_output = get_file_content(agent_folder + 'dcos-mesos-slave.service', z)
+            unit_output = get_file_content(agent_folder + 'dcos-mesos-subordinate.service', z)
             verify_unit_response(unit_output, 100)
 
             verify_archived_items(agent_folder, archived_items, expected_agent_files)
 
         # make sure all required log files for public agent node are in place.
-        for public_slave_ip in dcos_api_session.public_slaves:
-            agent_public_folder = public_slave_ip + '_agent_public/'
+        for public_subordinate_ip in dcos_api_session.public_subordinates:
+            agent_public_folder = public_subordinate_ip + '_agent_public/'
 
             # try to load dcos-diagnostics health report and validate the report is for this host
             health_report = _get_dcos_diagnostics_health(z, agent_public_folder + 'dcos-diagnostics-health.json')
             assert 'ip' in health_report
-            assert health_report['ip'] == public_slave_ip
+            assert health_report['ip'] == public_subordinate_ip
 
             # make sure systemd unit output is correct and does not contain error message
-            unit_output = get_file_content(agent_public_folder + 'dcos-mesos-slave-public.service', z)
+            unit_output = get_file_content(agent_public_folder + 'dcos-mesos-subordinate-public.service', z)
             verify_unit_response(unit_output, 100)
 
             verify_archived_items(agent_public_folder, archived_items, expected_public_agent_files)
@@ -594,11 +594,11 @@ def make_nodes_ip_map(dcos_api_session):
     a helper function to make a map detected_ip -> external_ip
     """
     node_private_public_ip_map = {}
-    for node in dcos_api_session.masters:
+    for node in dcos_api_session.mains:
         detected_ip = check_json(dcos_api_session.health.get('/', node=node))['ip']
         node_private_public_ip_map[detected_ip] = node
 
-    for node in dcos_api_session.all_slaves:
+    for node in dcos_api_session.all_subordinates:
         detected_ip = check_json(dcos_api_session.health.get('/', node=node))['ip']
         node_private_public_ip_map[detected_ip] = node
 

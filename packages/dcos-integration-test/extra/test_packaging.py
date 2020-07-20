@@ -49,7 +49,7 @@ def test_pkgpanda_api(dcos_api_session):
             else:
                 assert package == buildinfo_package
 
-    for node in dcos_api_session.masters + dcos_api_session.all_slaves:
+    for node in dcos_api_session.mains + dcos_api_session.all_subordinates:
         package_ids = get_and_validate_package_ids('/pkgpanda/repository/', node)
         active_package_ids = get_and_validate_package_ids('/pkgpanda/active/', node)
 
@@ -81,7 +81,7 @@ def _agent_has_resources(agent, node_requirements):
     """Check that an agent has at least as much resources as requried for one node
 
     Args:
-        agent: dict Info for one 'slave' from the mesos state summary
+        agent: dict Info for one 'subordinate' from the mesos state summary
         node_requirements: dict Resource requirements per agent
     """
     unreserved = agent['unreserved_resources']
@@ -111,7 +111,7 @@ def _enough_resources_for_package(state_summary, package_requirements):
         This is a sanity check meant for use with pytest.mark.skipif
         This only verifies that there were enough resources at the time state_summary was queried
     """
-    agents = state_summary['slaves']
+    agents = state_summary['subordinates']
     if len(agents) < package_requirements['number_of_nodes']:
         log.debug('Not enough agents for this package. Need {required}, have {available}'.format(
             required=package_requirements['number_of_nodes'],

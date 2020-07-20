@@ -87,8 +87,8 @@ def test_invalid_ipv4():
     err_msg = "Invalid IPv4 addresses in list: foo, bar"
 
     validate_error(
-        {'master_list': test_ips},
-        'master_list',
+        {'main_list': test_ips},
+        'main_list',
         err_msg)
 
     validate_error(
@@ -133,8 +133,8 @@ def test_validate_duplicates():
     err_msg = 'List cannot contain duplicates: 10.0.0.1 appears 2 times'
 
     validate_error(
-        {'master_list': test_ips},
-        'master_list',
+        {'main_list': test_ips},
+        'main_list',
         err_msg)
 
     validate_error(
@@ -203,38 +203,38 @@ def test_cluster_docker_credentials():
 
 # TODO: DCOS_OSS-3462 - muted Windows tests requiring investigation
 @pytest.mark.skipif(pkgpanda.util.is_windows, reason="test fails on Windows reason unknown")
-def test_exhibitor_storage_master_discovery():
-    msg_master_discovery = "When master_discovery is not static, exhibitor_storage_backend must be " \
-        "non-static. Having a variable list of master which are discovered by agents using the " \
-        "master_discovery method but also having a fixed known at install time static list of " \
-        "master ips doesn't `master_http_load_balancer` then exhibitor_storage_backend must not " \
+def test_exhibitor_storage_main_discovery():
+    msg_main_discovery = "When main_discovery is not static, exhibitor_storage_backend must be " \
+        "non-static. Having a variable list of main which are discovered by agents using the " \
+        "main_discovery method but also having a fixed known at install time static list of " \
+        "main ips doesn't `main_http_load_balancer` then exhibitor_storage_backend must not " \
         "be static."
 
     validate_success({
         'exhibitor_storage_backend': 'static',
-        'master_discovery': 'static'})
+        'main_discovery': 'static'})
     validate_success({
         'exhibitor_storage_backend': 'aws_s3',
-        'master_discovery': 'master_http_loadbalancer',
+        'main_discovery': 'main_http_loadbalancer',
         'aws_region': 'foo',
         'exhibitor_address': 'http://foobar',
         'exhibitor_explicit_keys': 'false',
-        'num_masters': '5',
+        'num_mains': '5',
         's3_bucket': 'baz',
         's3_prefix': 'mofo'})
     validate_success({
         'exhibitor_storage_backend': 'aws_s3',
-        'master_discovery': 'static',
+        'main_discovery': 'static',
         'exhibitor_explicit_keys': 'false',
         's3_bucket': 'foo',
         'aws_region': 'bar',
         's3_prefix': 'baz/bar'})
     validate_error_multikey(
         {'exhibitor_storage_backend': 'static',
-         'master_discovery': 'master_http_loadbalancer'},
-        ['exhibitor_storage_backend', 'master_discovery'],
-        msg_master_discovery,
-        unset={'exhibitor_address', 'num_masters'})
+         'main_discovery': 'main_http_loadbalancer'},
+        ['exhibitor_storage_backend', 'main_discovery'],
+        msg_main_discovery,
+        unset={'exhibitor_address', 'num_mains'})
 
 
 def test_exhibitor_tls_enabled():
@@ -285,12 +285,12 @@ def test_exhibitor_tls_initialize_fail():
             'platform': 'onprem',
             'exhibitor_tls_enabled': 'true',
             'exhibitor_tls_required': 'true',
-            'master_discovery': 'master_http_loadbalancer',
+            'main_discovery': 'main_http_loadbalancer',
             'exhibitor_address': 'http://foobar',
-            'num_masters': '5',
+            'num_mains': '5',
         }))
     assert exc.value.errors == [
-        'Only static master discovery is supported',
+        'Only static main discovery is supported',
         'Exhibitor security is an enterprise feature',
         'CA init in gen is only supported when using a remote bootstrap node',
     ]
@@ -717,7 +717,7 @@ def test_validate_check_config():
                             'description': 'Node check 1',
                             'cmd': ['echo', 'node-check-1'],
                             'timeout': '1s',
-                            'roles': ['master', 'foo'],
+                            'roles': ['main', 'foo'],
                         },
                     },
                     'poststart': ['node-check-1'],
@@ -725,7 +725,7 @@ def test_validate_check_config():
             })
         },
         'check_config',
-        'roles must be a list containing master or agent or both',
+        'roles must be a list containing main or agent or both',
     )
 
 
@@ -858,17 +858,17 @@ def test_validate_custom_checks():
     )
 
 
-@pytest.mark.skipif(pkgpanda.util.is_windows, reason="test fails on Windows reason no mesos master")
+@pytest.mark.skipif(pkgpanda.util.is_windows, reason="test fails on Windows reason no mesos main")
 def test_validate_mesos_work_dir():
     validate_success({
-        'mesos_master_work_dir': '/var/foo',
+        'mesos_main_work_dir': '/var/foo',
         'mesos_agent_work_dir': '/var/foo',
     })
 
     # Relative path.
     validate_error(
-        {'mesos_master_work_dir': 'foo'},
-        'mesos_master_work_dir',
+        {'mesos_main_work_dir': 'foo'},
+        'mesos_main_work_dir',
         'Must be an absolute filesystem path starting with /',
     )
     validate_error(
@@ -879,8 +879,8 @@ def test_validate_mesos_work_dir():
 
     # Empty work dir.
     validate_error(
-        {'mesos_master_work_dir': ''},
-        'mesos_master_work_dir',
+        {'mesos_main_work_dir': ''},
+        'mesos_main_work_dir',
         'Must be an absolute filesystem path starting with /',
     )
     validate_error(

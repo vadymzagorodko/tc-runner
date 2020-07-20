@@ -86,7 +86,7 @@ def syslog_mock(log_catcher):
 
 @pytest.fixture(scope='session')
 def dns_server_mock_s(dcos_net_ips, resolvconf_fixup):
-    """Set-up DNS mocks, both for agent AR (port 53) and master AR (port 61053)"""
+    """Set-up DNS mocks, both for agent AR (port 53) and main AR (port 61053)"""
     dns_sockets = [
         ("198.51.100.1", 53),
         ("198.51.100.2", 53),
@@ -179,14 +179,14 @@ def nginx_class(repo_is_ee, dns_server_mock_s, log_catcher, syslog_mock, mocker_
 
     This fixture also binds together all the mocks (dns, syslog, mocker(endpoints),
     log_catcher), so that tests developer can spawn it's own AR instance if
-    the default ones (master_ar_process/agent_ar_process) are insufficient.
+    the default ones (main_ar_process/agent_ar_process) are insufficient.
     """
     if repo_is_ee:
         from runner.ee import Nginx
     else:
         from runner.open import Nginx
 
-    def f(*args, role="master", **kwargs):
+    def f(*args, role="main", **kwargs):
         # We cannot define it as a fixture due to the fact that nginx_class is
         # used both in other fixtures and in tests directly. Liten link setup
         # fixture would have to be pulled in every time nginx_class is used
@@ -200,18 +200,18 @@ def nginx_class(repo_is_ee, dns_server_mock_s, log_catcher, syslog_mock, mocker_
 
 
 @pytest.fixture(scope='module')
-def master_ar_process(nginx_class):
+def main_ar_process(nginx_class):
     """A go-to AR process instance fixture that should be used in most of the
     tests.
 
     We cannot have 'session' scoped AR processes, as some of the tests will
-    need to start AR with different env vars or AR type (master/agent). So the
+    need to start AR with different env vars or AR type (main/agent). So the
     idea is to give it 'module' scope and thus have the same AR instance for
     all the tests in given test file unless some greater flexibility is required
-    and the nginx_class fixture or master_ar_process_pertest fixture is used.
+    and the nginx_class fixture or main_ar_process_pertest fixture is used.
     .
     """
-    nginx = nginx_class(role="master")
+    nginx = nginx_class(role="main")
     nginx.start()
 
     yield nginx
@@ -220,11 +220,11 @@ def master_ar_process(nginx_class):
 
 
 @pytest.fixture()
-def master_ar_process_pertest(nginx_class):
+def main_ar_process_pertest(nginx_class):
     """An AR process instance fixture for situations where need to trade off
        tests speed for having a per-test AR instance
     """
-    nginx = nginx_class(role="master")
+    nginx = nginx_class(role="main")
     nginx.start()
 
     yield nginx
@@ -233,11 +233,11 @@ def master_ar_process_pertest(nginx_class):
 
 
 @pytest.fixture(scope='class')
-def master_ar_process_perclass(nginx_class):
+def main_ar_process_perclass(nginx_class):
     """An AR process instance fixture for situations where need to trade off
        tests speed for having a per-class AR instance
     """
-    nginx = nginx_class(role="master")
+    nginx = nginx_class(role="main")
     nginx.start()
 
     yield nginx
@@ -248,8 +248,8 @@ def master_ar_process_perclass(nginx_class):
 @pytest.fixture(scope='module')
 def agent_ar_process(nginx_class):
     """
-    Same as `master_ar_process` fixture except for the fact that it starts 'agent'
-    nginx instead of `master`.
+    Same as `main_ar_process` fixture except for the fact that it starts 'agent'
+    nginx instead of `main`.
     """
     nginx = nginx_class(role="agent")
     nginx.start()
@@ -262,8 +262,8 @@ def agent_ar_process(nginx_class):
 @pytest.fixture()
 def agent_ar_process_pertest(nginx_class):
     """
-    Same as `master_ar_process_pertest` fixture except for the fact that it
-    starts 'agent' nginx instead of `master`.
+    Same as `main_ar_process_pertest` fixture except for the fact that it
+    starts 'agent' nginx instead of `main`.
     """
     nginx = nginx_class(role="agent")
     nginx.start()
@@ -276,8 +276,8 @@ def agent_ar_process_pertest(nginx_class):
 @pytest.fixture(scope='class')
 def agent_ar_process_perclass(nginx_class):
     """
-    Same as `master_ar_process_perclass` fixture except for the fact that it
-    starts 'agent' nginx instead of `master`.
+    Same as `main_ar_process_perclass` fixture except for the fact that it
+    starts 'agent' nginx instead of `main`.
     """
     nginx = nginx_class(role="agent")
     nginx.start()

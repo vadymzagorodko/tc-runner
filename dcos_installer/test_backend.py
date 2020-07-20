@@ -34,14 +34,14 @@ def test_generate_node_upgrade_script(tmpdir, monkeypatch):
 ---
 # The name of your DC/OS cluster. Visable in the DC/OS user interface.
 cluster_name: 'DC/OS'
-master_discovery: static
+main_discovery: static
 exhibitor_storage_backend: 'static'
 resolvers:
 - 8.8.8.8
 - 8.8.4.4
 process_timeout: 10000
 bootstrap_url: file:///opt/dcos_install_tmp
-master_list: ['10.0.0.1', '10.0.0.2', '10.0.0.5']
+main_list: ['10.0.0.1', '10.0.0.2', '10.0.0.5']
 """
     monkeypatch.setenv('BOOTSTRAP_VARIANT', '')
     create_config(upgrade_config, tmpdir)
@@ -84,7 +84,7 @@ def test_do_validate_config(tmpdir, monkeypatch):
     create_fake_build_artifacts(tmpdir)
     expected_output = {
         'ip_detect_contents': 'ip-detect script `genconf/ip-detect` must exist',
-        'master_list': 'Must set master_list, no way to calculate value.',
+        'main_list': 'Must set main_list, no way to calculate value.',
     }
     with tmpdir.as_cwd():
         assert Config(config_path='genconf/config.yaml').do_validate() == expected_output
@@ -96,7 +96,7 @@ def test_get_config(tmpdir):
 
     expected_data = {
         'cluster_name': 'DC/OS',
-        'master_discovery': 'static',
+        'main_discovery': 'static',
         'exhibitor_storage_backend': 'static',
         'resolvers': ['8.8.8.8', '8.8.4.4'],
         'process_timeout': 10000,
@@ -123,21 +123,21 @@ def test_determine_config_type(tmpdir):
 
 def test_success():
     mock_config = to_config({
-        'master_list': ['10.0.0.1', '10.0.0.2', '10.0.0.5'],
+        'main_list': ['10.0.0.1', '10.0.0.2', '10.0.0.5'],
         'agent_list': ['10.0.0.3', '10.0.0.4']
     })
     expected_output = {
         "success": "http://10.0.0.1",
-        "master_count": 3,
+        "main_count": 3,
         "agent_count": 2
     }
     expected_output_bad = {
         "success": "",
-        "master_count": 0,
+        "main_count": 0,
         "agent_count": 0
     }
     got_output, code = backend.success(mock_config)
-    mock_config.update({'master_list': '', 'agent_list': ''})
+    mock_config.update({'main_list': '', 'agent_list': ''})
     bad_out, bad_code = backend.success(mock_config)
 
     assert got_output == expected_output
@@ -148,9 +148,9 @@ def test_success():
 
 simple_full_config = """---
 cluster_name: DC/OS
-master_discovery: static
+main_discovery: static
 exhibitor_storage_backend: static
-master_list:
+main_list:
  - 127.0.0.1
 bootstrap_url: http://example.com
 """
@@ -193,7 +193,7 @@ def valid_storage_config(release_config_aws):
     s3_bucket_name = release_config_aws['bucket']
     bucket_path = str(uuid.uuid4())
     yield """---
-master_list:
+main_list:
  - 127.0.0.1
 aws_template_storage_bucket: {bucket}
 aws_template_storage_bucket_path: {bucket_path}
@@ -256,10 +256,10 @@ def test_do_configure_logs_validation_errors(tmpdir, monkeypatch, caplog):
     monkeypatch.setenv('BOOTSTRAP_VARIANT', 'test_variant')
     invalid_config = textwrap.dedent("""---
     cluster_name: DC/OS
-    master_discovery: static
+    main_discovery: static
     # Remove `exhibitor_storage_backend` from configuration
     # exhibitor_storage_backend: static
-    master_list:
+    main_list:
     - 127.0.0.1
     bootstrap_url: http://example.com
     """)

@@ -45,26 +45,26 @@ def test_if_marathon_app_can_be_debugged(dcos_api_session):
     app, test_uuid = test_helpers.marathon_test_app()
     app_id = 'integration-test-{}'.format(test_uuid)
     with dcos_api_session.marathon.deploy_and_cleanup(app):
-        # Fetch the mesos master state once the task is running
-        master_ip = dcos_api_session.masters[0]
-        r = dcos_api_session.get('/state', host=master_ip, port=5050)
+        # Fetch the mesos main state once the task is running
+        main_ip = dcos_api_session.mains[0]
+        r = dcos_api_session.get('/state', host=main_ip, port=5050)
         assert r.status_code == 200
         state = r.json()
 
-        # Find the agent_id and container_id from master state
+        # Find the agent_id and container_id from main state
         container_id = None
         agent_id = None
         for framework in state['frameworks']:
             for task in framework['tasks']:
                 if app_id in task['id']:
                     container_id = task['statuses'][0]['container_status']['container_id']['value']
-                    agent_id = task['slave_id']
+                    agent_id = task['subordinate_id']
         assert container_id is not None, 'Container ID not found for instance of app_id {}'.format(app_id)
         assert agent_id is not None, 'Agent ID not found for instance of app_id {}'.format(app_id)
 
         # Find hostname and URL from agent_id
         agent_hostname = None
-        for agent in state['slaves']:
+        for agent in state['subordinates']:
             if agent['id'] == agent_id:
                 agent_hostname = agent['hostname']
         assert agent_hostname is not None, 'Agent hostname not found for agent_id {}'.format(agent_id)
@@ -153,7 +153,7 @@ def test_files_api(dcos_api_session):
 
         for required_sandbox_file in ('stdout', 'stderr'):
             content = dcos_api_session.mesos_sandbox_file(
-                app_task['slaveId'], marathon_framework_id, app_task['id'], required_sandbox_file)
+                app_task['subordinateId'], marathon_framework_id, app_task['id'], required_sandbox_file)
 
             assert content, 'File {} should not be empty'.format(required_sandbox_file)
 
@@ -178,30 +178,30 @@ def test_if_ucr_app_runs_in_new_pid_namespace(dcos_api_session):
         @retrying.retry(wait_fixed=1000, stop_max_delay=10000)
         def get_ps_output():
             return dcos_api_session.mesos_sandbox_file(
-                app_task['slaveId'], marathon_framework_id, app_task['id'], ps_output_file)
+                app_task['subordinateId'], marathon_framework_id, app_task['id'], ps_output_file)
 
         assert len(get_ps_output().split()) <= 4, 'UCR app has more than 4 processes running in its pid namespace'
 
 
 def test_memory_profiling(dcos_api_session):
     # Test that we can fetch raw memory profiles
-    master_ip = dcos_api_session.masters[0]
+    main_ip = dcos_api_session.mains[0]
     r0 = dcos_api_session.get(
-        '/memory-profiler/start', host=master_ip, port=5050)
+        '/memory-profiler/start', host=main_ip, port=5050)
     assert r0.status_code == 200, r0.text
 
     r1 = dcos_api_session.get(
-        '/memory-profiler/stop', host=master_ip, port=5050)
+        '/memory-profiler/stop', host=main_ip, port=5050)
     assert r1.status_code == 200, r1.text
 
     r2 = dcos_api_session.get(
-        '/memory-profiler/download/raw', host=master_ip, port=5050)
+        '/memory-profiler/download/raw', host=main_ip, port=5050)
     assert r2.status_code == 200, r2.text
 
 
 def test_containerizer_debug_endpoint(dcos_api_session):
     # Test that we can poll `/containerizer/debug` endpoint exposed by the agent.
-    agent = dcos_api_session.slaves[0]
+    agent = dcos_api_session.subordinates[0]
     r = dcos_api_session.get('/containerizer/debug', host=agent, port=5051)
     assert r.status_code == 200
     assert r.json() == {'pending': []}
@@ -240,27 +240,27 @@ def test_blkio_stats(dcos_api_session):
         @retrying.retry(wait_fixed=1000, stop_max_delay=10000)
         def get_marker_file_content():
             return dcos_api_session.mesos_sandbox_file(
-                app_task['slaveId'], marathon_framework_id, app_task['id'], marker_file)
+                app_task['subordinateId'], marathon_framework_id, app_task['id'], marker_file)
 
         assert get_marker_file_content() == 'done'
 
-        # Fetch the Mesos master state
-        master_ip = dcos_api_session.masters[0]
-        r = dcos_api_session.get('/state', host=master_ip, port=5050)
+        # Fetch the Mesos main state
+        main_ip = dcos_api_session.mains[0]
+        r = dcos_api_session.get('/state', host=main_ip, port=5050)
         assert r.status_code == 200
         state = r.json()
 
-        # Find the agent_id from master state
+        # Find the agent_id from main state
         agent_id = None
         for framework in state['frameworks']:
             for task in framework['tasks']:
                 if app_id in task['id']:
-                    agent_id = task['slave_id']
+                    agent_id = task['subordinate_id']
         assert agent_id is not None, 'Agent ID not found for instance of app_id {}'.format(app_id)
 
         # Find hostname from agent_id
         agent_hostname = None
-        for agent in state['slaves']:
+        for agent in state['subordinates']:
             if agent['id'] == agent_id:
                 agent_hostname = agent['hostname']
         assert agent_hostname is not None, 'Agent hostname not found for agent_id {}'.format(agent_id)
@@ -328,18 +328,18 @@ def test_fault_domain(dcos_api_session):
     expanded_config = test_helpers.get_expanded_config()
     if expanded_config['fault_domain_enabled'] == 'false':
         pytest.skip('fault domain is not set')
-    master_ip = dcos_api_session.masters[0]
-    r = dcos_api_session.get('/state', host=master_ip, port=5050)
+    main_ip = dcos_api_session.mains[0]
+    r = dcos_api_session.get('/state', host=main_ip, port=5050)
     assert r.status_code == 200
     state = r.json()
 
-    # check flags and get the domain parameters mesos master was started with.
+    # check flags and get the domain parameters mesos main was started with.
     assert 'flags' in state, 'missing flags in state json'
     assert 'domain' in state['flags'], 'missing domain in state json flags'
     cli_flag = json.loads(state['flags']['domain'])
     expected_region, expected_zone = get_region_zone(cli_flag)
 
-    # check master top level keys
+    # check main top level keys
     assert 'leader_info' in state, 'leader_info is missing in state json'
     assert 'domain' in state['leader_info'], 'domain is missing in state json'
     leader_region, leader_zone = get_region_zone(state['leader_info']['domain'])
@@ -347,7 +347,7 @@ def test_fault_domain(dcos_api_session):
     assert leader_region == expected_region, 'expect region {}. Got {}'.format(expected_region, leader_region)
     assert leader_zone == expected_zone, 'expect zone {}. Got {}'.format(expected_zone, leader_zone)
 
-    for agent in state['slaves']:
+    for agent in state['subordinates']:
         assert 'domain' in agent, 'missing domain field for agent. {}'.format(agent)
         agent_region, agent_zone = get_region_zone(agent['domain'])
 
@@ -385,21 +385,21 @@ def reserved_disk(dcos_api_session):
     try:
         # Get the ID of a private agent. We some assume that resources on that
         # agent are unreserved.
-        r = dcos_api_session.get('/mesos/slaves')
+        r = dcos_api_session.get('/mesos/subordinates')
         assert r.status_code == 200, r.text
         response = json.loads(r.text)
-        slaves = [
-            slave['id'] for slave in response['slaves']
-            if 'public_ip' not in slave['attributes']]
-        assert slaves, 'Could not find any private agents'
-        slave_id = slaves[0]
+        subordinates = [
+            subordinate['id'] for subordinate in response['subordinates']
+            if 'public_ip' not in subordinate['attributes']]
+        assert subordinates, 'Could not find any private agents'
+        subordinate_id = subordinates[0]
 
         # Create a unique role to reserve the disk to. The test framework should
         # register in this role.
         dcos_api_session.role = 'disk-' + uuid.uuid4().hex
 
         resources1 = {
-            'agent_id': {'value': slave_id},
+            'agent_id': {'value': subordinate_id},
             'resources': [
                 {
                     'type': 'SCALAR',
@@ -423,15 +423,15 @@ def reserved_disk(dcos_api_session):
         reserved_resources.append(resources1)
 
         # Reserve the remaining agent resources for another role. We let the Mesos
-        # master perform the calculation of the unreserved resources on the agent
+        # main perform the calculation of the unreserved resources on the agent
         # which requires another query.
-        r = dcos_api_session.get('/mesos/slaves')
+        r = dcos_api_session.get('/mesos/subordinates')
         assert r.status_code == 200, r.text
         response = json.loads(r.text)
 
         unreserved = [
-            slave['unreserved_resources_full'] for slave in response['slaves']
-            if slave['id'] == slave_id]
+            subordinate['unreserved_resources_full'] for subordinate in response['subordinates']
+            if subordinate['id'] == subordinate_id]
         assert len(unreserved) == 1
         unreserved = unreserved[0]
         another_role = uuid.uuid4().hex

@@ -64,9 +64,9 @@ def test_checks_api(dcos_api_session):
     failed and dcos-checks functioned properly.
     """
     checks_uri = '/system/checks/v1/'
-    # Test that we can list and run node and cluster checks on a master, agent, and public agent.
+    # Test that we can list and run node and cluster checks on a main, agent, and public agent.
     check_nodes = []
-    for nodes in [dcos_api_session.masters, dcos_api_session.slaves, dcos_api_session.public_slaves]:
+    for nodes in [dcos_api_session.mains, dcos_api_session.subordinates, dcos_api_session.public_subordinates]:
         if nodes:
             check_nodes.append(random.choice(nodes))
     logging.info('Testing %s on these nodes: %s', checks_uri, ', '.join(check_nodes))

@@ -1,5 +1,5 @@
 """
-Tests for replacing master nodes.
+Tests for replacing main nodes.
 """
 
 import textwrap
@@ -72,33 +72,33 @@ def test_replace_all_static(
 ) -> None:
     """
     In a cluster with an Exhibitor backend consisting of a static ZooKeeper
-    ensemble, after removing one master, and then adding another master with
+    ensemble, after removing one main, and then adding another main with
     the same IP address, the cluster will get to a healthy state. This is
-    repeated until all masters in the original cluster have been replaced.
+    repeated until all mains in the original cluster have been replaced.
     The purpose of this test is to assert that the ``node-poststart``
-    procedure correctly prevents a master node replacement from being performed
-    too quickly. A new master node should only become part of the cluster if
+    procedure correctly prevents a main node replacement from being performed
+    too quickly. A new main node should only become part of the cluster if
     there are no more underreplicated ranges reported by CockroachDB.
 
     Permanent CockroachDB data loss and a potential breakage of DC/OS occurs
-    when a second master node is taken down for replacement while CockroachDB
+    when a second main node is taken down for replacement while CockroachDB
     is recovering and there are still underreplicated ranges due to a recent
-    other master node replacement.
+    other main node replacement.
     """
     docker_backend = Docker(network=docker_network_three_available_addresses)
 
     with Cluster(
         cluster_backend=docker_backend,
         # Allocate all 3 available IP addresses in the subnet.
-        masters=3,
+        mains=3,
         agents=0,
         public_agents=0,
     ) as original_cluster:
-        master = next(iter(original_cluster.masters))
-        result = master.run(
+        main = next(iter(original_cluster.mains))
+        result = main.run(
             args=[
                 'ifconfig',
-                '|', 'grep', '-B1', str(master.public_ip_address),
+                '|', 'grep', '-B1', str(main.public_ip_address),
                 '|', 'grep', '-o', '"^\w*"',
             ],
             output=Output.LOG_AND_CAPTURE,
@@ -120,9 +120,9 @@ def test_replace_all_static(
         ip_detect_path = tmp_path / 'ip-detect'
         ip_detect_path.write_text(data=ip_detect_contents)
         static_config = {
-            'master_discovery': 'static',
-            'master_list': [str(master.private_ip_address)
-                            for master in original_cluster.masters],
+            'main_discovery': 'static',
+            'main_list': [str(main.private_ip_address)
+                            for main in original_cluster.mains],
         }
         dcos_config = {
             **original_cluster.base_config,
@@ -141,49 +141,49 @@ def test_replace_all_static(
         current_cluster = original_cluster
         tmp_clusters = set()
 
-        original_masters = original_cluster.masters
+        original_mains = original_cluster.mains
 
         try:
-            for master_to_be_replaced in original_masters:
-                # Destroy a master and free one IP address.
-                original_cluster.destroy_node(node=master_to_be_replaced)
+            for main_to_be_replaced in original_mains:
+                # Destroy a main and free one IP address.
+                original_cluster.destroy_node(node=main_to_be_replaced)
 
                 temporary_cluster = Cluster(
                     cluster_backend=docker_backend,
                     # Allocate one container with the now free IP address.
-                    masters=1,
+                    mains=1,
                     agents=0,
                     public_agents=0,
                 )
                 tmp_clusters.add(temporary_cluster)
 
-                # Install a new master on a new container with the same IP address.
-                (new_master, ) = temporary_cluster.masters
-                new_master.install_dcos_from_path(
+                # Install a new main on a new container with the same IP address.
+                (new_main, ) = temporary_cluster.mains
+                new_main.install_dcos_from_path(
                     dcos_installer=artifact_path,
                     dcos_config=dcos_config,
                     role=Role.MASTER,
                     ip_detect_path=ip_detect_path,
                 )
-                # Form a new cluster with the newly create master node.
+                # Form a new cluster with the newly create main node.
                 new_cluster = Cluster.from_nodes(
-                    masters=current_cluster.masters.union({new_master}),
+                    mains=current_cluster.mains.union({new_main}),
                     agents=current_cluster.agents,
                     public_agents=current_cluster.public_agents,
                 )
-                # The `wait_for_dcos_oss` function waits until the new master has
-                # joined the cluster and all masters are healthy. Without the
+                # The `wait_for_dcos_oss` function waits until the new main has
+                # joined the cluster and all mains are healthy. Without the
                 # cockroachdb check, this succeeds before all cockroachdb ranges
-                # have finished replicating to the new master. That meant that the
-                # next master would be replaced too quickly, while it had data that
+                # have finished replicating to the new main. That meant that the
+                # next main would be replaced too quickly, while it had data that
                 # was not present elsewhere in the cluster. This lead to
                 # irrecoverable dataloss.  This function waits until the
-                # master node is "healthy". This is a requirement for replacing the
-                # next master node.
+                # main node is "healthy". This is a requirement for replacing the
+                # next main node.
                 #
                 # We don't call the cockroachdb ranges check directly as the
                 # purpose of this test is to ensure that when an operator follows
-                # our documented procedure for replacing a master node multiple
+                # our documented procedure for replacing a main node multiple
                 # times in a row (e.g. during a cluster upgrade) then the cluster
                 # remains healthy throughout and afterwards.
                 #
@@ -193,12 +193,12 @@ def test_replace_all_static(
                 # whether a node is healthy, is sufficient to prevent the cluster
                 # from breaking.
                 #
-                # We perform this check after every master is replaced, as that is
-                # what we tell operators to do: "After installing the new master
+                # We perform this check after every main is replaced, as that is
+                # what we tell operators to do: "After installing the new main
                 # node, wait until it becomes healthy before proceeding to the
                 # next."
                 #
-                # The procedure for replacing multiple masters is documented here:
+                # The procedure for replacing multiple mains is documented here:
                 # https://docs.mesosphere.com/1.12/installing/production/upgrading/#dcos-masters
                 wait_for_dcos_oss(
                     cluster=new_cluster,

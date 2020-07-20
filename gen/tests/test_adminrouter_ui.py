@@ -8,10 +8,10 @@ from gen.tests.utils import make_arguments
 
 def test_adminrouter_ui_x_frame_options_default():
     """
-    Test that Master Admin Router config file has the correct default
+    Test that Main Admin Router config file has the correct default
     `X-Frame-Options` value. Defaults are present in `calc.py`.
     """
-    config_path = '/etc_master/adminrouter-ui-security.conf'
+    config_path = '/etc_main/adminrouter-ui-security.conf'
     arguments = make_arguments(new_arguments={})
     generated = gen.generate(arguments=arguments)
     package = generated.templates['dcos-config.yaml']['package']
@@ -40,7 +40,7 @@ def test_adminrouter_ui_x_frame_options_custom(value):
     Test for all 3 allowed values
     See: https://tools.ietf.org/html/rfc7034#section-2.1
     """
-    config_path = '/etc_master/adminrouter-ui-security.conf'
+    config_path = '/etc_main/adminrouter-ui-security.conf'
     arguments = make_arguments(new_arguments={
         'adminrouter_x_frame_options': value,
     })

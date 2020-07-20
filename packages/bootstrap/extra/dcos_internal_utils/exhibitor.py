@@ -71,17 +71,17 @@ def try_shortcut():
     return True
 
 
-def wait(master_count_filename):
+def wait(main_count_filename):
     if try_shortcut():
         log.info("Shortcut succeeeded, assuming local zk is in good config state, not waiting for quorum.")
         return
     log.info('Shortcut failed, waiting for exhibitor to bring up zookeeper and stabilize')
 
-    if not os.path.exists(master_count_filename):
-        log.info("master_count file doesn't exist when it should. Hard failing.")
+    if not os.path.exists(main_count_filename):
+        log.info("main_count file doesn't exist when it should. Hard failing.")
         sys.exit(1)
 
-    cluster_size = int(utils.read_file_line(master_count_filename))
+    cluster_size = int(utils.read_file_line(main_count_filename))
     log.info('Expected cluster size: {}'.format(cluster_size))
 
     log.info('Waiting for ZooKeeper cluster to stabilize')

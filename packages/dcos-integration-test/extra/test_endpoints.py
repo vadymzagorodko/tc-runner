@@ -39,14 +39,14 @@ def test_if_mesos_is_up(dcos_api_session):
     assert '<title>Mesos</title>' in r.text
 
 
-def test_if_all_mesos_slaves_have_registered(dcos_api_session):
-    r = dcos_api_session.get('/mesos/master/slaves')
+def test_if_all_mesos_subordinates_have_registered(dcos_api_session):
+    r = dcos_api_session.get('/mesos/main/subordinates')
     assert r.status_code == 200
 
     data = r.json()
-    slaves_ips = sorted(x['hostname'] for x in data['slaves'])
+    subordinates_ips = sorted(x['hostname'] for x in data['subordinates'])
 
-    assert slaves_ips == dcos_api_session.all_slaves
+    assert subordinates_ips == dcos_api_session.all_subordinates
 
 
 @pytest.mark.supportedwindows
@@ -75,8 +75,8 @@ def test_if_zookeeper_cluster_is_up(dcos_api_session):
     zks_ips = sorted(x['hostname'] for x in data)
     zks_leaders = sum(1 for x in data if x['isLeader'])
 
-    assert zks_ips == dcos_api_session.masters
-    assert serving_zks == len(dcos_api_session.masters)
+    assert zks_ips == dcos_api_session.mains
+    assert serving_zks == len(dcos_api_session.mains)
     assert zks_leaders == 1
 
 
@@ -159,8 +159,8 @@ def test_if_dcos_history_service_is_getting_data(dcos_api_session):
         # Make sure some basic fields are present from state-summary which the DC/OS
         # UI relies upon. Their exact content could vary so don't test the value.
         json = r.json()
-        assert {'cluster', 'frameworks', 'slaves', 'hostname'} <= json.keys()
-        assert len(json["slaves"]) == len(dcos_api_session.all_slaves)
+        assert {'cluster', 'frameworks', 'subordinates', 'hostname'} <= json.keys()
+        assert len(json["subordinates"]) == len(dcos_api_session.all_subordinates)
 
     check_up()
 
@@ -179,8 +179,8 @@ def test_if_we_have_capabilities(dcos_api_session):
     assert {'name': 'PACKAGE_MANAGEMENT'} in r.json()['capabilities']
 
 
-def test_if_overlay_master_is_up(dcos_api_session):
-    r = dcos_api_session.get('/mesos/overlay-master/state')
+def test_if_overlay_main_is_up(dcos_api_session):
+    r = dcos_api_session.get('/mesos/overlay-main/state')
     assert r.ok, "status_code: {}, content: {}".format(r.status_code, r.content)
 
     # Make sure the `dcos` and `dcos6` overlays have been configured.
@@ -204,12 +204,12 @@ def test_if_overlay_master_is_up(dcos_api_session):
     assert nested_match(dcos_overlay_network, json['network'])
 
 
-def test_if_overlay_master_agent_is_up(dcos_api_session):
-    master_response = dcos_api_session.get('/mesos/overlay-master/state')
-    assert master_response.ok,\
-        "status_code: {}, content: {}".format(master_response.status_code, master_response.content)
+def test_if_overlay_main_agent_is_up(dcos_api_session):
+    main_response = dcos_api_session.get('/mesos/overlay-main/state')
+    assert main_response.ok,\
+        "status_code: {}, content: {}".format(main_response.status_code, main_response.content)
 
-    master_overlay_json = master_response.json()
+    main_overlay_json = main_response.json()
 
     agent_response = dcos_api_session.get('/mesos/overlay-agent/overlay')
     assert agent_response.ok,\
@@ -221,25 +221,25 @@ def test_if_overlay_master_agent_is_up(dcos_api_session):
     assert 'ip' in agent_overlay_json
     agent_ip = agent_overlay_json['ip']
 
-    master_agent_overlays = None
-    for agent in master_overlay_json['agents']:
+    main_agent_overlays = None
+    for agent in main_overlay_json['agents']:
         assert 'ip' in agent
         if agent['ip'] == agent_ip:
             assert len(agent['overlays']) == 2
-            master_agent_overlays = agent['overlays']
+            main_agent_overlays = agent['overlays']
 
     assert 'overlays' in agent_overlay_json
     assert len(agent_overlay_json['overlays']) == 2
 
     for agent_overlay in agent_overlay_json['overlays']:
         overlay_name = agent_overlay['info']['name']
-        if master_agent_overlays[0]['info']['name'] == overlay_name:
-            _validate_dcos_overlay(overlay_name, agent_overlay, master_agent_overlays[0])
+        if main_agent_overlays[0]['info']['name'] == overlay_name:
+            _validate_dcos_overlay(overlay_name, agent_overlay, main_agent_overlays[0])
         else:
-            _validate_dcos_overlay(overlay_name, agent_overlay, master_agent_overlays[1])
+            _validate_dcos_overlay(overlay_name, agent_overlay, main_agent_overlays[1])
 
 
-def _validate_dcos_overlay(overlay_name, agent_overlay, master_agent_overlay):
+def _validate_dcos_overlay(overlay_name, agent_overlay, main_agent_overlay):
 
     if overlay_name == 'dcos':
         assert 'subnet' in agent_overlay
@@ -250,23 +250,23 @@ def _validate_dcos_overlay(overlay_name, agent_overlay, master_agent_overlay):
         subnet6 = agent_overlay.pop('subnet6')
         _validate_overlay_subnet(subnet6, 'fd01:b::/64', 80)
 
-    if 'mesos_bridge' in master_agent_overlay:
+    if 'mesos_bridge' in main_agent_overlay:
         try:
             agent_overlay.pop('mesos_bridge')
         except KeyError as ex:
             raise AssertionError("Could not find expected 'mesos_bridge' in agent:" + str(ex)) from ex
     else:
-        # Master didn't configure a `mesos-bridge` so shouldn't be
+        # Main didn't configure a `mesos-bridge` so shouldn't be
         # seeing it in the agent as well.
         assert 'mesos_bridge' not in agent_overlay
 
-    if 'docker_bridge' in master_agent_overlay:
+    if 'docker_bridge' in main_agent_overlay:
         try:
             agent_overlay.pop('docker_bridge')
         except KeyError as ex:
             raise AssertionError("Could not find expected 'docker_bridge' in agent:" + str(ex)) from ex
     else:
-        # Master didn't configure a `docker-bridge` so shouldn't be
+        # Main didn't configure a `docker-bridge` so shouldn't be
         # seeing it in the agent as well.
         assert 'docker_bridge' not in agent_overlay
 
@@ -345,9 +345,9 @@ def test_if_cosmos_is_only_available_locally(dcos_api_session):
     # over non-lo interfaces
     msg = "Cosmos reachable from non-lo interface"
     with pytest.raises(ConnectionError, message=msg):
-        dcos_api_session.get('/', host=dcos_api_session.masters[0], port=7070, scheme='http')
+        dcos_api_session.get('/', host=dcos_api_session.mains[0], port=7070, scheme='http')
     with pytest.raises(ConnectionError, message=msg):
-        dcos_api_session.get('/', host=dcos_api_session.masters[0], port=9990, scheme='http')
+        dcos_api_session.get('/', host=dcos_api_session.mains[0], port=9990, scheme='http')
 
     # One should be able to connect to the cosmos HTTP and admin ports at
     # 127.0.0.1:7070 and 127.0.0.1:9990.

@@ -21,7 +21,7 @@ ALL ENVIRONMENT VARIABLES:
     Ssh user for your Cluster.
 
     {begin_color}MASTER_PUBLIC_IP{end_color}
-    Public IP of the master to run tests on.
+    Public IP of the main to run tests on.
 
     \033[93mIf waiting for all hosts to be registered is not
     important for your case, you can set WAIT_FOR_HOSTS=false
@@ -34,7 +34,7 @@ ALL ENVIRONMENT VARIABLES:
     Comma-separated list of private agent private IPs.
 
     {begin_color}MASTERS_PRIVATE_IPS{end_color}
-    Comma-separated list of master private IPs.
+    Comma-separated list of main private IPs.
 
 
   Required variables for DC/OS Enterprise only
