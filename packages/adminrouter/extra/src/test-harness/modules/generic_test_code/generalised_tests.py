@@ -54,7 +54,7 @@ def _verify_tests_conf(tests_conf):
 def _verify_type_specification(types):
     assert len(set(types)) in [1, 2]
     for k in types:
-        assert k in ['master', 'agent']
+        assert k in ['main', 'agent']
 
 
 def _verify_endpoint_tests_conf(endpoint_tests):
@@ -392,8 +392,8 @@ def _universal_test_if_upstream_headers_are_correct(
 
 def create_tests(metafunc, path):
     tests_config = _tests_configuration(path)
-    if 'master_ar_process_perclass' in metafunc.fixturenames:
-        ar_type = 'master'
+    if 'main_ar_process_perclass' in metafunc.fixturenames:
+        ar_type = 'main'
     else:
         ar_type = 'agent'
 
@@ -438,10 +438,10 @@ def create_tests(metafunc, path):
         return
 
 
-class GenericTestMasterClass:
+class GenericTestMainClass:
     def test_if_request_is_sent_to_correct_upstream(
             self,
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             valid_user_header,
             path,
             expected_upstream,
@@ -452,7 +452,7 @@ class GenericTestMasterClass:
             req_headers["Host"] = vhost
 
         generic_correct_upstream_dest_test(
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             req_headers,
             path,
             expected_upstream,
@@ -460,7 +460,7 @@ class GenericTestMasterClass:
 
     def test_if_upstream_headers_are_correct(
             self,
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             valid_user_header,
             path,
             jwt_forwarded_test,
@@ -473,7 +473,7 @@ class GenericTestMasterClass:
 
         _universal_test_if_upstream_headers_are_correct(
             self,
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             req_headers,
             path,
             jwt_forwarded_test,
@@ -482,7 +482,7 @@ class GenericTestMasterClass:
 
     def test_if_upstream_request_is_correct(
             self,
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             valid_user_header,
             path,
             upstream_path,
@@ -494,7 +494,7 @@ class GenericTestMasterClass:
             req_headers["Host"] = vhost
 
         generic_correct_upstream_request_test(
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             req_headers,
             path,
             upstream_path,
@@ -503,7 +503,7 @@ class GenericTestMasterClass:
 
     def test_if_location_header_during_redirect_is_adjusted(
             self,
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             mocker,
             valid_user_header,
             endpoint_id,
@@ -517,7 +517,7 @@ class GenericTestMasterClass:
             req_headers["Host"] = vhost
 
         generic_location_header_during_redirect_is_adjusted_test(
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             mocker,
             req_headers,
             endpoint_id,
@@ -527,7 +527,7 @@ class GenericTestMasterClass:
             )
 
     def test_redirect_req_without_slash(
-            self, master_ar_process_perclass, redirect_path, code, vhost):
+            self, main_ar_process_perclass, redirect_path, code, vhost):
 
         if vhost is not None:
             req_headers = {"Host": vhost}
@@ -535,14 +535,14 @@ class GenericTestMasterClass:
             req_headers = {}
 
         generic_no_slash_redirect_test(
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             redirect_path,
             code,
             headers=req_headers,
             )
 
     def test_if_unauthn_user_is_granted_access(
-            self, master_ar_process_perclass, unauthed_path, vhost):
+            self, main_ar_process_perclass, unauthed_path, vhost):
 
         if vhost is not None:
             req_headers = {"Host": vhost}
@@ -550,14 +550,14 @@ class GenericTestMasterClass:
             req_headers = {}
 
         assert_endpoint_response(
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             unauthed_path,
             200,
             headers=req_headers)
 
     def test_if_resp_headers_are_correct(
             self,
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             valid_user_header,
             path,
             caching_headers_test,
@@ -584,7 +584,7 @@ class GenericTestMasterClass:
             req_headers["Host"] = vhost
 
         generic_verify_response_test(
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             req_headers,
             path,
             assert_headers=headers_present,

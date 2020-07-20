@@ -86,9 +86,9 @@ def test_superuser_service_account_login(
             request=request,
             log_dir=log_dir,
         )
-        master = next(iter(cluster.masters))
-        master_url = 'http://' + str(master.public_ip_address)
-        login_endpoint = master_url + '/acs/api/v1/auth/login'
+        main = next(iter(cluster.mains))
+        main_url = 'http://' + str(main.public_ip_address)
+        login_endpoint = main_url + '/acs/api/v1/auth/login'
 
         service_login_token = jwt.encode(
             {'uid': superuser_uid, 'exp': time.time() + 30},

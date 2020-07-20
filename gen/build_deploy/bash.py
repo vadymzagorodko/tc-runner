@@ -453,7 +453,7 @@ function check_all() {
     echo -e "${BOLD}Running preflight checks${NORMAL}"
     AGENT_ONLY=0
     for ROLE in $ROLES; do
-        if [[ $ROLE = "slave" || $ROLE = "slave_public" ]]; then
+        if [[ $ROLE = "subordinate" || $ROLE = "subordinate_public" ]]; then
             AGENT_ONLY=1
             break
         fi
@@ -494,16 +494,16 @@ function check_all() {
     print_status $RC
     (( OVERALL_RC += $RC ))
 
-    # Run service check on master node only
+    # Run service check on main node only
     if [[ $AGENT_ONLY -eq 0 ]]; then
-        # master node service checks
+        # main node service checks
         for service in \
             "53 dcos-net" \
             "80 adminrouter" \
             "443 adminrouter" \
             "1050 dcos-diagnostics" \
             "2181 zookeeper" \
-            "5050 mesos-master" \
+            "5050 mesos-main" \
             "7070 cosmos" \
             "8080 marathon" \
             "8101 dcos-oauth" \
@@ -548,8 +548,8 @@ function check_all() {
 
     for role in "$ROLES"
     do
-        if [ "$role" != "master" -a "$role" != "slave" -a "$role" != "slave_public" -a "$role" != "minuteman" ]; then
-            echo -e "${RED}FAIL Invalid role $role. Role must be one of {master,slave,slave_public}${NORMAL}"
+        if [ "$role" != "main" -a "$role" != "subordinate" -a "$role" != "subordinate_public" -a "$role" != "minuteman" ]; then
+            echo -e "${RED}FAIL Invalid role $role. Role must be one of {main,subordinate,subordinate_public}${NORMAL}"
             (( OVERALL_RC += 1 ))
         fi
     done

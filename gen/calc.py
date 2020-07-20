@@ -400,8 +400,8 @@ def validate_dcos_dns_store_modes(dcos_dns_store_modes):
     assert len(modes) == len(set(modes)), "Must be unique"
 
 
-def validate_num_masters(num_masters):
-    assert int(num_masters) in [1, 3, 5, 7, 9], "Must have 1, 3, 5, 7, or 9 masters. Found {}".format(num_masters)
+def validate_num_mains(num_mains):
+    assert int(num_mains) in [1, 3, 5, 7, 9], "Must have 1, 3, 5, 7, or 9 mains. Found {}".format(num_mains)
 
 
 def validate_bootstrap_url(bootstrap_url):
@@ -446,8 +446,8 @@ def validate_dns_search(dns_search):
     assert len(dns_search.split()) <= 6, "Must contain no more than 6 domains"
 
 
-def validate_master_list(master_list):
-    return validate_ip_list(master_list)
+def validate_main_list(main_list):
+    return validate_ip_list(main_list)
 
 
 def validate_resolvers(resolvers):
@@ -458,8 +458,8 @@ def validate_mesos_dns_ip_sources(mesos_dns_ip_sources):
     return validate_json_list(mesos_dns_ip_sources)
 
 
-def calc_num_masters(master_list):
-    return str(len(json.loads(master_list)))
+def calc_num_mains(main_list):
+    return str(len(json.loads(main_list)))
 
 
 def calculate_no_proxy(no_proxy):
@@ -476,10 +476,10 @@ def validate_zk_path(exhibitor_zk_path):
     assert exhibitor_zk_path.startswith('/'), "Must be of the form /path/to/znode"
 
 
-def calculate_exhibitor_static_ensemble(master_list):
-    masters = json.loads(master_list)
-    masters.sort()
-    return ','.join(['%d:%s' % (i + 1, m) for i, m in enumerate(masters)])
+def calculate_exhibitor_static_ensemble(main_list):
+    mains = json.loads(main_list)
+    mains.sort()
+    return ','.join(['%d:%s' % (i + 1, m) for i, m in enumerate(mains)])
 
 
 def calculate_exhibitor_admin_password_enabled(exhibitor_admin_password):
@@ -593,13 +593,13 @@ def calculate_set(parameter):
         return 'true'
 
 
-def validate_exhibitor_storage_master_discovery(master_discovery, exhibitor_storage_backend):
-    if master_discovery != 'static':
-        assert exhibitor_storage_backend != 'static', "When master_discovery is not static, " \
-            "exhibitor_storage_backend must be non-static. Having a variable list of master which " \
-            "are discovered by agents using the master_discovery method but also having a fixed " \
-            "known at install time static list of master ips doesn't " \
-            "`master_http_load_balancer` then exhibitor_storage_backend must not be static."
+def validate_exhibitor_storage_main_discovery(main_discovery, exhibitor_storage_backend):
+    if main_discovery != 'static':
+        assert exhibitor_storage_backend != 'static', "When main_discovery is not static, " \
+            "exhibitor_storage_backend must be non-static. Having a variable list of main which " \
+            "are discovered by agents using the main_discovery method but also having a fixed " \
+            "known at install time static list of main ips doesn't " \
+            "`main_http_load_balancer` then exhibitor_storage_backend must not be static."
 
 
 def calculate_adminrouter_tls_version_override(
@@ -881,12 +881,12 @@ def calculate_check_config(check_time):
     check_config = {
         'node_checks': {
             'checks': {
-                'components_master': {
+                'components_main': {
                     'description': 'All DC/OS components are healthy.',
-                    'cmd': ['/opt/mesosphere/bin/dcos-checks', '--role', 'master', 'components',
+                    'cmd': ['/opt/mesosphere/bin/dcos-checks', '--role', 'main', 'components',
                             '--exclude=dcos-checks-poststart.timer,dcos-checks-poststart.service'],
                     'timeout': normal_check_timeout,
-                    'roles': ['master']
+                    'roles': ['main']
                 },
                 'components_agent': {
                     'description': 'All DC/OS components are healthy',
@@ -925,14 +925,14 @@ def calculate_check_config(check_time):
                     'cmd': ['/opt/mesosphere/bin/dcos-checks', 'executable', 'docker'],
                     'timeout': normal_check_timeout
                 },
-                'mesos_master_replog_synchronized': {
-                    'description': 'The Mesos master has synchronized its replicated log',
-                    'cmd': ['/opt/mesosphere/bin/dcos-checks', '--role', 'master', 'mesos-metrics'],
+                'mesos_main_replog_synchronized': {
+                    'description': 'The Mesos main has synchronized its replicated log',
+                    'cmd': ['/opt/mesosphere/bin/dcos-checks', '--role', 'main', 'mesos-metrics'],
                     'timeout': normal_check_timeout,
-                    'roles': ['master']
+                    'roles': ['main']
                 },
-                'mesos_agent_registered_with_masters': {
-                    'description': 'The Mesos agent has registered with the masters',
+                'mesos_agent_registered_with_mains': {
+                    'description': 'The Mesos agent has registered with the mains',
                     'cmd': ['/opt/mesosphere/bin/dcos-checks', '--role', 'agent', 'mesos-metrics'],
                     'timeout': normal_check_timeout,
                     'roles': ['agent']
@@ -950,12 +950,12 @@ def calculate_check_config(check_time):
                         'ranges',
                     ],
                     'timeout': normal_check_timeout,
-                    'roles': ['master']
+                    'roles': ['main']
                 },
             },
             'prestart': [],
             'poststart': [
-                'components_master',
+                'components_main',
                 'components_agent',
                 'xz',
                 'tar',
@@ -963,8 +963,8 @@ def calculate_check_config(check_time):
                 'unzip',
                 'docker',
                 'ip_detect_script',
-                'mesos_master_replog_synchronized',
-                'mesos_agent_registered_with_masters',
+                'mesos_main_replog_synchronized',
+                'mesos_agent_registered_with_mains',
                 'journald_dir_permissions',
                 'cockroachdb_replication',
             ],
@@ -1018,8 +1018,8 @@ def validate_check_config(check_config):
                     'cmd': [str],
                     'timeout': timeout,
                     schema.Optional('roles'): schema.Schema(
-                        ['master', 'agent'],
-                        error='roles must be a list containing master or agent or both',
+                        ['main', 'agent'],
+                        error='roles must be a list containing main or agent or both',
                     ),
                 },
             },
@@ -1087,12 +1087,12 @@ __dcos_overlay_network6_default_name = 'dcos6'
 entry = {
     'validate': [
         validate_s3_prefix,
-        validate_num_masters,
+        validate_num_mains,
         validate_bootstrap_url,
         validate_exhibitor_bootstrap_ca_url,
         validate_channel_name,
         validate_dns_search,
-        validate_master_list,
+        validate_main_list,
         validate_resolvers,
         validate_dns_bind_ip_blacklist,
         validate_dns_forward_zones,
@@ -1108,7 +1108,7 @@ entry = {
         lambda mesos_dns_set_truncate_bit: validate_true_false(mesos_dns_set_truncate_bit),
         validate_mesos_log_retention_mb,
         lambda telemetry_enabled: validate_true_false(telemetry_enabled),
-        lambda master_dns_bindall: validate_true_false(master_dns_bindall),
+        lambda main_dns_bindall: validate_true_false(main_dns_bindall),
         validate_os_type,
         validate_dcos_overlay_network,
         lambda dcos_overlay_network_json: validate_dcos_overlay_network(dcos_overlay_network_json),
@@ -1137,8 +1137,8 @@ entry = {
         lambda cluster_docker_credentials_enabled: validate_true_false(cluster_docker_credentials_enabled),
         lambda cluster_docker_credentials_write_to_etc: validate_true_false(cluster_docker_credentials_write_to_etc),
         lambda cluster_docker_credentials: validate_json_dictionary(cluster_docker_credentials),
-        lambda aws_masters_have_public_ip: validate_true_false(aws_masters_have_public_ip),
-        validate_exhibitor_storage_master_discovery,
+        lambda aws_mains_have_public_ip: validate_true_false(aws_mains_have_public_ip),
+        validate_exhibitor_storage_main_discovery,
         lambda exhibitor_admin_password_enabled: validate_true_false(exhibitor_admin_password_enabled),
         lambda enable_lb: validate_true_false(enable_lb),
         lambda enable_ipv6: validate_true_false(enable_ipv6),
@@ -1161,10 +1161,10 @@ entry = {
         lambda custom_checks: validate_check_config(custom_checks),
         lambda custom_checks, check_config: validate_custom_checks(custom_checks, check_config),
         lambda fault_domain_enabled: validate_true_false(fault_domain_enabled),
-        lambda mesos_master_work_dir: validate_absolute_path(mesos_master_work_dir),
+        lambda mesos_main_work_dir: validate_absolute_path(mesos_main_work_dir),
         lambda mesos_agent_work_dir: validate_absolute_path(mesos_agent_work_dir),
         lambda mesos_agent_log_file: validate_absolute_path(mesos_agent_log_file),
-        lambda mesos_master_log_file: validate_absolute_path(mesos_master_log_file),
+        lambda mesos_main_log_file: validate_absolute_path(mesos_main_log_file),
         lambda diagnostics_bundles_dir: validate_absolute_path(diagnostics_bundles_dir),
         lambda licensing_enabled: validate_true_false(licensing_enabled),
         lambda enable_mesos_ipv6_discovery: validate_true_false(enable_mesos_ipv6_discovery),
@@ -1205,10 +1205,10 @@ entry = {
         'dns_search': '',
         'auth_cookie_secure_flag': 'false',
         'marathon_java_args': '',
-        'master_dns_bindall': 'true',
+        'main_dns_bindall': 'true',
         'mesos_dns_ip_sources': '["host", "netinfo"]',
         'mesos_dns_set_truncate_bit': 'true',
-        'master_external_loadbalancer': '',
+        'main_external_loadbalancer': '',
         'mesos_log_retention_mb': '4000',
         'mesos_container_log_sink': 'fluentbit+logrotate',
         'mesos_max_completed_tasks_per_framework': '',
@@ -1303,8 +1303,8 @@ entry = {
         'check_config': calculate_check_config,
         'custom_checks': '{}',
         'check_search_path': CHECK_SEARCH_PATH,
-        'mesos_master_work_dir': '/var/lib/dcos/mesos/master',
-        'mesos_agent_work_dir': '/var/lib/mesos/slave',
+        'mesos_main_work_dir': '/var/lib/dcos/mesos/main',
+        'mesos_agent_work_dir': '/var/lib/mesos/subordinate',
         'diagnostics_bundles_dir': '/var/lib/dcos/dcos-diagnostics/diag-bundles',
         'fault_domain_detect_filename': 'genconf/fault-domain-detect',
         'fault_domain_detect_contents': calculate_fault_domain_detect_contents,
@@ -1317,7 +1317,7 @@ entry = {
     'must': {
         'fault_domain_enabled': 'false',
         'custom_auth': 'false',
-        'master_quorum': lambda num_masters: str(floor(int(num_masters) / 2) + 1),
+        'main_quorum': lambda num_mains: str(floor(int(num_mains) / 2) + 1),
         'dns_bind_ip_blacklist_json': calculate_dns_bind_ip_blacklist_json,
         'resolvers_str': calculate_resolvers_str,
         'dcos_image_commit': calulate_dcos_image_commit,
@@ -1327,8 +1327,8 @@ entry = {
         'mesos_log_directory_max_files': calculate_mesos_log_directory_max_files,
         'mesos_agent_port': '5051',
         'mesos_agent_log_file': '/var/log/mesos/mesos-agent.log',
-        'mesos_master_port': '5050',
-        'mesos_master_log_file': '/var/lib/dcos/mesos/log/mesos-master.log',
+        'mesos_main_port': '5050',
+        'mesos_main_log_file': '/var/lib/dcos/mesos/log/mesos-main.log',
         'marathon_port': '8080',
         'dcos_version': DCOS_VERSION,
         'dcos_variant': 'open',
@@ -1360,8 +1360,8 @@ entry = {
         'no_proxy_final': calculate_no_proxy,
         'cluster_docker_credentials_path': calculate_cluster_docker_credentials_path,
         'cluster_docker_registry_enabled': calculate_cluster_docker_registry_enabled,
-        'has_master_external_loadbalancer':
-            lambda master_external_loadbalancer: calculate_set(master_external_loadbalancer),
+        'has_main_external_loadbalancer':
+            lambda main_external_loadbalancer: calculate_set(main_external_loadbalancer),
         'profile_symlink_source': '/opt/mesosphere/bin/add_dcos_path.sh',
         'profile_symlink_target': '/etc/profile.d/dcos.sh',
         'profile_symlink_target_dir': calculate_profile_symlink_target_dir,
@@ -1385,10 +1385,10 @@ entry = {
         'aws_secret_access_key'
     ],
     'conditional': {
-        'master_discovery': {
-            'master_http_loadbalancer': {},
+        'main_discovery': {
+            'main_http_loadbalancer': {},
             'static': {
-                'must': {'num_masters': calc_num_masters}
+                'must': {'num_mains': calc_num_mains}
             }
         },
         'rexray_config_preset': {

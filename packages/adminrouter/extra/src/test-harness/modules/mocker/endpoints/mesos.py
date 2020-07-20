@@ -39,7 +39,7 @@ FRAMEWORK_TEMPLATE = {
         "mem": 0.0
     },
     "pid": "scheduler-43d78acd-8c22-4a42-82e5-43c64407038c@10.0.5.35:38457",
-    "slave_ids": [],
+    "subordinate_ids": [],
     "used_resources": {
         "cpus": 0.0,
         "disk": 0.0,
@@ -117,7 +117,7 @@ SCHEDULER_FWRK_ONLYMESOSDNS_NEST2 = framework_from_template(
 
 AGENT_TEMPLATE = {
     "id": "8ad5a85c-c14b-4cca-a089-b9dc006e7286-S2",
-    "pid": "slave(1)@127.0.0.4:15003",
+    "pid": "subordinate(1)@127.0.0.4:15003",
     "hostname": "127.0.0.4",
     "registered_time": 1484580645.5393,
     "resources": {
@@ -172,11 +172,11 @@ def agent_from_template(sid, ip, port):
         ip (string): IP address that the new agent hould pretend to listen on
 
     Returns:
-        Slave dict mimicing the one returned by Marathon
+        Subordinate dict mimicing the one returned by Marathon
     """
     res = copy.deepcopy(AGENT_TEMPLATE)
     res['id'] = sid
-    res['pid'] = "slave(1)@{0}:{1}".format(ip, port)
+    res['pid'] = "subordinate(1)@{0}:{1}".format(ip, port)
     res['hostname'] = ip
 
     return res
@@ -218,7 +218,7 @@ INITIAL_STATEJSON = {
                    SCHEDULER_FWRK_ONLYMESOSDNS_NEST2,
                    ],
     "hostname": "10.0.5.35",
-    "slaves": [AGENT1_DICT,
+    "subordinates": [AGENT1_DICT,
                AGENT2_DICT,
                AGENT3_DICT,
                ],
@@ -229,7 +229,7 @@ INITIAL_STATEJSON = {
 class MesosHTTPRequestHandler(RecordingHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
 
-    """A request hander class mimicking Mesos master daemon.
+    """A request hander class mimicking Mesos main daemon.
     """
     def _calculate_response(self, base_path, url_args, body_args=None):
         """Reply with a static Mesos state-summary response.
@@ -242,10 +242,10 @@ class MesosHTTPRequestHandler(RecordingHTTPRequestHandler):
         """
         if base_path == '/reflect/me':
             # A test URI that is used by tests. In some cases it is impossible
-            # to reuse /master/state-summary path.
+            # to reuse /main/state-summary path.
             return self._reflect_request(base_path, url_args, body_args)
 
-        if base_path != '/master/state-summary':
+        if base_path != '/main/state-summary':
             msg = "Path `{}` is not supported yet".format(base_path)
             blob = msg.encode('utf-8')
             raise EndpointException(code=500, reason=blob)
@@ -281,7 +281,7 @@ class MesosEndpoint(RecordingTcpIpEndpoint):
            not present in mocked `/state-json summary`
         """
         with self._context.lock:
-            self._context.data["endpoint-content"]["slaves"].append(EXTRA_AGENT_DICT)
+            self._context.data["endpoint-content"]["subordinates"].append(EXTRA_AGENT_DICT)
 
     def set_frameworks_response(self, frameworks):
         """Set response content for frameworks section of /state-summary response

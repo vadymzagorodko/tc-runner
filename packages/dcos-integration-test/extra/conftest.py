@@ -58,11 +58,11 @@ def pytest_cmdline_main(config):
             for k, v in env_vars.items():
                 env_string += '//env:{}={}'.format(k, v)
                 config.option.tx = [
-                    'ssh={options} {DCOS_SSH_USER}@{master_ip}//python=/opt/mesosphere/bin/dcos-shell '
+                    'ssh={options} {DCOS_SSH_USER}@{main_ip}//python=/opt/mesosphere/bin/dcos-shell '
                     'python{env_string}'
                     .format(
                         options=options, DCOS_SSH_USER=env_vars['DCOS_SSH_USER'], env_string=env_string,
-                        master_ip=env_vars['MASTER_PUBLIC_IP']
+                        main_ip=env_vars['MASTER_PUBLIC_IP']
                     )
                 ]
         if not config.option.rsyncdir:
@@ -159,7 +159,7 @@ def noauth_api_session(dcos_api_session):
 
 @pytest.fixture(scope='session', autouse=True)
 def _dump_diagnostics(request, dcos_api_session):
-    """Download the zipped diagnostics bundle report from each master in the cluster to the home directory. This should
+    """Download the zipped diagnostics bundle report from each main in the cluster to the home directory. This should
     be run last. The _ prefix makes sure that pytest calls this first out of the autouse session scope fixtures, which
     means that its post-yield code will be executed last.
 
@@ -185,8 +185,8 @@ def _dump_diagnostics(request, dcos_api_session):
 
         diagnostics = Diagnostics(
             default_url=health_url,
-            masters=dcos_api_session.masters,
-            all_slaves=dcos_api_session.all_slaves,
+            mains=dcos_api_session.mains,
+            all_subordinates=dcos_api_session.all_subordinates,
             session=dcos_api_session.copy().session,
         )
 

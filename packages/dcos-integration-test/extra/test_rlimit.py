@@ -18,7 +18,7 @@ def test_if_rlimits_can_be_used(dcos_api_session):
     argv = [
         '/opt/mesosphere/bin/mesos-execute',
         '--rlimits={"rlimits": [{"type":"RLMT_CORE"}]}',
-        '--master=leader.mesos:5050',
+        '--main=leader.mesos:5050',
         '--name={}'.format(name),
         '--command=ulimit -c | grep -q unlimited',
         '--shell=true',

@@ -368,7 +368,7 @@ def setup_thread_debugger():
 
 
 def ar_listen_link_setup(role, is_ee):
-    assert role in ['master', 'agent']
+    assert role in ['main', 'agent']
 
     if is_ee:
         flavour = 'ee'

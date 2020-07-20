@@ -54,8 +54,8 @@ class MarathonApp:
             if vip is not None:
                 del args['host_port']
         self.app, self.uuid = test_helpers.marathon_test_app(**args)
-        # allow this app to run on public slaves
-        self.app['acceptedResourceRoles'] = ['*', 'slave_public']
+        # allow this app to run on public subordinates
+        self.app['acceptedResourceRoles'] = ['*', 'subordinate_public']
         self.id = self.app['id']
 
     def __str__(self):
@@ -114,7 +114,7 @@ class MarathonPod:
         self.id = pod_name_fmt.format(self.uuid)
         self.app = {
             'id': self.id,
-            'scheduling': {'placement': {'acceptedResourceRoles': ['*', 'slave_public']}},
+            'scheduling': {'placement': {'acceptedResourceRoles': ['*', 'subordinate_public']}},
             'containers': [{
                 'name': 'app-{}'.format(self.uuid),
                 'resources': {'cpus': 0.01, 'mem': 32},
@@ -306,7 +306,7 @@ def test_vip(dcos_api_session,
 
     Origin app will be deployed to the cluster with a VIP. Proxy app will be
     deployed either to the same host or elsewhere. Finally, a thread will be
-    started on localhost (which should be a master) to submit a command to the
+    started on localhost (which should be a main) to submit a command to the
     proxy container that will ping the origin container VIP and then assert
     that the expected origin app UUID was returned
     '''
@@ -342,7 +342,7 @@ def test_vip(dcos_api_session,
 
 
 def setup_vip_workload_tests(dcos_api_session, container, vip_net, proxy_net, ipv6, with_port_mapping_app=False):
-    same_hosts = [True, False] if len(dcos_api_session.all_slaves) > 1 else [True]
+    same_hosts = [True, False] if len(dcos_api_session.all_subordinates) > 1 else [True]
     tests = [vip_workload_test(dcos_api_session, container, vip_net, proxy_net,
                                ipv6, named_vip, same_host, with_port_mapping_app)
              for named_vip in [True, False]
@@ -372,10 +372,10 @@ def setup_vip_workload_tests(dcos_api_session, container, vip_net, proxy_net, ip
 
 def vip_workload_test(dcos_api_session, container, vip_net, proxy_net, ipv6,
                       named_vip, same_host, with_port_mapping_app):
-    slaves = dcos_api_session.slaves + dcos_api_session.public_slaves
+    subordinates = dcos_api_session.subordinates + dcos_api_session.public_subordinates
     vip_port = unused_port()
-    origin_host = slaves[0]
-    proxy_host = slaves[0] if same_host else slaves[1]
+    origin_host = subordinates[0]
+    proxy_host = subordinates[0] if same_host else subordinates[1]
     if named_vip:
         label = str(uuid.uuid4())
         vip = '/{}:{}'.format(label, vip_port)
@@ -439,10 +439,10 @@ def test_if_overlay_ok(dcos_api_session):
         for overlay in overlays:
             assert overlay['state']['status'] == 'STATUS_OK'
 
-    for master in dcos_api_session.masters:
-        _check_overlay(master, 5050)
-    for slave in dcos_api_session.all_slaves:
-        _check_overlay(slave, 5051)
+    for main in dcos_api_session.mains:
+        _check_overlay(main, 5050)
+    for subordinate in dcos_api_session.all_subordinates:
+        _check_overlay(subordinate, 5051)
 
 
 def test_if_dcos_l4lb_disabled(dcos_api_session):
@@ -459,7 +459,7 @@ def test_ip_per_container(dcos_api_session):
     '''Test if we are able to connect to a task with ip-per-container mode
     '''
     # Launch the test_server in ip-per-container mode (user network)
-    if len(dcos_api_session.slaves) < 2:
+    if len(dcos_api_session.subordinates) < 2:
         pytest.skip("IP Per Container tests require 2 private agents to work")
 
     app_definition, test_uuid = test_helpers.marathon_test_app(
@@ -514,7 +514,7 @@ def test_app_networking_mode_with_defined_container_port(dcos_api_session, netwo
     #  Cache refresh in Adminrouter takes 30 seconds at most.
     #  CACHE_POLL_PERIOD=25s + valid=5s Nginx resolver DNS entry TTL
     #  https://github.com/dcos/dcos/blob/cb9105ee537cc44cbe63cc7c53b3b01b764703a0/
-    #  packages/adminrouter/extra/src/includes/http/master.conf#L21
+    #  packages/adminrouter/extra/src/includes/http/main.conf#L21
     adminrouter_default_refresh = 25 + 5 + buffer_time
     app_id = app_definition['id']
     app_instances = app_definition['instances']
@@ -600,7 +600,7 @@ def test_l4lb(dcos_api_session):
 def test_dcos_cni_l4lb(dcos_api_session):
     '''
     This tests the `dcos - l4lb` CNI plugins:
-        https: // github.com / dcos / dcos - cni / tree / master / cmd / l4lb
+        https: // github.com / dcos / dcos - cni / tree / main / cmd / l4lb
 
     The `dcos-l4lb` CNI plugins allows containers running on networks that don't
     necessarily have routes to spartan interfaces and minuteman VIPs to consume DNS
@@ -636,7 +636,7 @@ def test_dcos_cni_l4lb(dcos_api_session):
         pytest.skip('Cannot setup CNI config with EE strict mode enabled')
 
     # Run all the test application on the first agent node
-    host = dcos_api_session.slaves[0]
+    host = dcos_api_session.subordinates[0]
 
     # CNI configuration of `spartan-net`.
     spartan_net = {

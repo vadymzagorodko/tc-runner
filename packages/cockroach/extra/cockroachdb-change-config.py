@@ -29,7 +29,7 @@ def set_num_replicas(my_internal_ip: str, num_replicas: int) -> None:
     In order to adjust this to the maximum replication factor possible for a
     given DC/OS cluster and to provide maximum fault-tolerance we set the
     cluster-wide configuration setting `num_replicas` for any database entity
-    to the given `num_replicas` count which equals the number of DC/OS master
+    to the given `num_replicas` count which equals the number of DC/OS main
     nodes.
     Relevant JIRA ticket: https://jira.mesosphere.com/browse/DCOS-20352
     """
@@ -85,8 +85,8 @@ def set_num_replicas(my_internal_ip: str, num_replicas: int) -> None:
         log.info('Command returned')
 
 
-def get_expected_master_node_count() -> int:
-    """Identify and return the expected number of DC/OS master nodes."""
+def get_expected_main_node_count() -> int:
+    """Identify and return the expected number of DC/OS main nodes."""
 
     # This is the expanded DC/OS configuration JSON document w/o sensitive
     # values. Read it, parse it.
@@ -94,13 +94,13 @@ def get_expected_master_node_count() -> int:
     with open(dcos_cfg_path, 'rb') as f:
         dcos_config = json.loads(f.read().decode('utf-8'))
 
-    # If the master discovery strategy is dynamic, the num_masters
-    # configuration item is required to specify the expected number of masters.
-    # If the master discovery strategy is static, the num_masters configuration
-    # item is auto-populated from the given master_list. As such, we rely on
-    # num_masters regardless of master discovery strategy.
-    log.info("Get master node count from dcos_config['num_masters']")
-    return int(dcos_config['num_masters'])
+    # If the main discovery strategy is dynamic, the num_mains
+    # configuration item is required to specify the expected number of mains.
+    # If the main discovery strategy is static, the num_mains configuration
+    # item is auto-populated from the given main_list. As such, we rely on
+    # num_mains regardless of main discovery strategy.
+    log.info("Get main node count from dcos_config['num_mains']")
+    return int(dcos_config['num_mains'])
 
 
 def main() -> None:
@@ -108,10 +108,10 @@ def main() -> None:
     my_internal_ip = utils.detect_ip()
     log.info('My internal IP address is `{}`'.format(my_internal_ip))
 
-    master_node_count = get_expected_master_node_count()
-    log.info('Expected number of DC/OS master nodes: %s', master_node_count)
+    main_node_count = get_expected_main_node_count()
+    log.info('Expected number of DC/OS main nodes: %s', main_node_count)
 
-    set_num_replicas(my_internal_ip, master_node_count)
+    set_num_replicas(my_internal_ip, main_node_count)
 
 
 if __name__ == '__main__':

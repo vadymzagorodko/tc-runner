@@ -176,7 +176,7 @@ class TestHTTPRequestHandler(BaseHTTPRequestHandler):
 
         This method queries external reflector for server's IP address. It's done
         by sending a 'GET /reflect' request to a test_server running on some
-        other mesos slave. Please see the description of the '_handle_path_reflect'
+        other mesos subordinate. Please see the description of the '_handle_path_reflect'
         method for more details.
 
         Args:

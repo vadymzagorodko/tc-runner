@@ -35,9 +35,9 @@ def check_tags(tags: dict, required_tag_names: set, optional_tag_names: set = se
 
 @pytest.mark.supportedwindows
 def test_metrics_ping(dcos_api_session):
-    """ Test that the metrics service is up on master and agents.
+    """ Test that the metrics service is up on main and agents.
     """
-    nodes = get_master_and_agents(dcos_api_session)
+    nodes = get_main_and_agents(dcos_api_session)
 
     for node in nodes:
         response = dcos_api_session.metrics.get('/ping', node=node)
@@ -46,8 +46,8 @@ def test_metrics_ping(dcos_api_session):
 
 
 def test_metrics_agents_prom(dcos_api_session):
-    """Telegraf Prometheus endpoint is reachable on master and agents."""
-    nodes = get_master_and_agents(dcos_api_session)
+    """Telegraf Prometheus endpoint is reachable on main and agents."""
+    nodes = get_main_and_agents(dcos_api_session)
 
     for node in nodes:
         response = dcos_api_session.session.request('GET', 'http://' + node + ':61091/metrics')
@@ -68,8 +68,8 @@ def get_metrics_prom(dcos_api_session, node):
 
 
 def test_metrics_procstat(dcos_api_session):
-    """Assert that procstat metrics are present on master and agent nodes."""
-    nodes = get_master_and_agents(dcos_api_session)
+    """Assert that procstat metrics are present on main and agent nodes."""
+    nodes = get_main_and_agents(dcos_api_session)
 
     for node in nodes:
         @retrying.retry(wait_fixed=STD_INTERVAL, stop_max_delay=METRICS_WAITTIME)
@@ -93,28 +93,28 @@ def test_metrics_agents_mesos(dcos_api_session):
             response = get_metrics_prom(dcos_api_session, node)
             for family in text_string_to_metric_families(response.text):
                 for sample in family.samples:
-                    if sample[0] == 'mesos_slave_uptime_secs':
+                    if sample[0] == 'mesos_subordinate_uptime_secs':
                         return
-            raise Exception('Expected Mesos mesos_slave_uptime_secs metric not found')
+            raise Exception('Expected Mesos mesos_subordinate_uptime_secs metric not found')
         check_mesos_metrics()
 
 
-def test_metrics_master_mesos(dcos_api_session):
-    """Assert that mesos metrics on master are present."""
+def test_metrics_main_mesos(dcos_api_session):
+    """Assert that mesos metrics on main are present."""
     @retrying.retry(wait_fixed=STD_INTERVAL, stop_max_delay=METRICS_WAITTIME)
     def check_mesos_metrics():
-        response = get_metrics_prom(dcos_api_session, dcos_api_session.masters[0])
+        response = get_metrics_prom(dcos_api_session, dcos_api_session.mains[0])
         for family in text_string_to_metric_families(response.text):
             for sample in family.samples:
-                if sample[0] == 'mesos_master_uptime_secs':
+                if sample[0] == 'mesos_main_uptime_secs':
                     return
-        raise Exception('Expected Mesos mesos_master_uptime_secs metric not found')
+        raise Exception('Expected Mesos mesos_main_uptime_secs metric not found')
     check_mesos_metrics()
 
 
 def test_metrics_agents_mesos_overlay(dcos_api_session):
-    """Assert that mesos agent overlay module metrics on master and agents are present."""
-    nodes = get_master_and_agents(dcos_api_session)
+    """Assert that mesos agent overlay module metrics on main and agents are present."""
+    nodes = get_main_and_agents(dcos_api_session)
 
     for node in nodes:
         @retrying.retry(wait_fixed=STD_INTERVAL, stop_max_delay=METRICS_WAITTIME)
@@ -122,30 +122,30 @@ def test_metrics_agents_mesos_overlay(dcos_api_session):
             response = get_metrics_prom(dcos_api_session, node)
             for family in text_string_to_metric_families(response.text):
                 for sample in family.samples:
-                    if sample[0] == 'mesos_overlay_slave_registering':
+                    if sample[0] == 'mesos_overlay_subordinate_registering':
                         return
-            raise Exception('Expected Mesos mesos_overlay_slave_registering metric not found')
+            raise Exception('Expected Mesos mesos_overlay_subordinate_registering metric not found')
         check_mesos_metrics()
 
 
-def test_metrics_master_mesos_overlay(dcos_api_session):
-    """Assert that mesos overlay module metrics on master are present."""
+def test_metrics_main_mesos_overlay(dcos_api_session):
+    """Assert that mesos overlay module metrics on main are present."""
     @retrying.retry(wait_fixed=STD_INTERVAL, stop_max_delay=METRICS_WAITTIME)
     def check_mesos_metrics():
-        response = get_metrics_prom(dcos_api_session, dcos_api_session.masters[0])
+        response = get_metrics_prom(dcos_api_session, dcos_api_session.mains[0])
         for family in text_string_to_metric_families(response.text):
             for sample in family.samples:
-                if sample[0] == 'mesos_overlay_master_process_restarts':
+                if sample[0] == 'mesos_overlay_main_process_restarts':
                     return
-        raise Exception('Expected Mesos mesos_overlay_master_process_restarts metric not found')
+        raise Exception('Expected Mesos mesos_overlay_main_process_restarts metric not found')
     check_mesos_metrics()
 
 
-def test_metrics_master_zookeeper(dcos_api_session):
-    """Assert that ZooKeeper metrics on master are present."""
+def test_metrics_main_zookeeper(dcos_api_session):
+    """Assert that ZooKeeper metrics on main are present."""
     @retrying.retry(wait_fixed=STD_INTERVAL, stop_max_delay=METRICS_WAITTIME)
     def check_zookeeper_metrics():
-        response = get_metrics_prom(dcos_api_session, dcos_api_session.masters[0])
+        response = get_metrics_prom(dcos_api_session, dcos_api_session.mains[0])
         for family in text_string_to_metric_families(response.text):
             for sample in family.samples:
                 if sample[0] == 'zookeeper_avg_latency':
@@ -155,11 +155,11 @@ def test_metrics_master_zookeeper(dcos_api_session):
     check_zookeeper_metrics()
 
 
-def test_metrics_master_cockroachdb(dcos_api_session):
-    """Assert that CockroachDB metrics on master are present."""
+def test_metrics_main_cockroachdb(dcos_api_session):
+    """Assert that CockroachDB metrics on main are present."""
     @retrying.retry(wait_fixed=STD_INTERVAL, stop_max_delay=METRICS_WAITTIME)
     def check_cockroachdb_metrics():
-        response = get_metrics_prom(dcos_api_session, dcos_api_session.masters[0])
+        response = get_metrics_prom(dcos_api_session, dcos_api_session.mains[0])
         for family in text_string_to_metric_families(response.text):
             for sample in family.samples:
                 if sample[0] == 'ranges_underreplicated':
@@ -169,15 +169,15 @@ def test_metrics_master_cockroachdb(dcos_api_session):
     check_cockroachdb_metrics()
 
 
-def test_metrics_master_adminrouter_nginx_vts(dcos_api_session):
-    """Assert that Admin Router Nginx VTS metrics on master are present."""
+def test_metrics_main_adminrouter_nginx_vts(dcos_api_session):
+    """Assert that Admin Router Nginx VTS metrics on main are present."""
     @retrying.retry(
         wait_fixed=STD_INTERVAL,
         stop_max_delay=METRICS_WAITTIME,
         retry_on_exception=lambda e: isinstance(e, AssertionError)
     )
     def check_adminrouter_metrics():
-        response = get_metrics_prom(dcos_api_session, dcos_api_session.masters[0])
+        response = get_metrics_prom(dcos_api_session, dcos_api_session.mains[0])
         for family in text_string_to_metric_families(response.text):
             for sample in family.samples:
                 if sample[0].startswith('nginx_vts_') and sample[1].get('dcos_component_name') == 'Admin Router':
@@ -190,11 +190,11 @@ def test_metrics_master_adminrouter_nginx_vts(dcos_api_session):
     jira="DCOS-57896",
     reason="Does not find expected metrics 'exhibitor_status_isleader', 'exhibitor_status_code'",
     since="2019-08-23")
-def test_metrics_master_exhibitor_status(dcos_api_session):
-    """Assert that Exhibitor status metrics on master are present."""
+def test_metrics_main_exhibitor_status(dcos_api_session):
+    """Assert that Exhibitor status metrics on main are present."""
     @retrying.retry(wait_fixed=STD_INTERVAL, stop_max_delay=METRICS_WAITTIME)
     def check_exhibitor_metrics():
-        response = get_metrics_prom(dcos_api_session, dcos_api_session.masters[0])
+        response = get_metrics_prom(dcos_api_session, dcos_api_session.mains[0])
         expected_metrics = {'exhibitor_status_code', 'exhibitor_status_isleader'}
         samples = []
         for family in text_string_to_metric_families(response.text):
@@ -225,11 +225,11 @@ def _nginx_vts_measurement_basename(name: str) -> str:
     return '_'.join(name.split('_')[:3])
 
 
-def test_metrics_master_adminrouter_nginx_drop_requests_seconds(dcos_api_session):
+def test_metrics_main_adminrouter_nginx_drop_requests_seconds(dcos_api_session):
     """
     nginx_vts_*_request_seconds* metrics are not present.
     """
-    node = dcos_api_session.masters[0]
+    node = dcos_api_session.mains[0]
     # Make request to a fine-grained metrics annotated upstream of
     # Admin Router (IAM in this case).
     dcos_api_session.get('/acs/api/v1/auth/jwks', host=node)
@@ -260,10 +260,10 @@ def test_metrics_agent_adminrouter_nginx_drop_requests_seconds(dcos_api_session)
     nginx_vts_*_request_seconds* metrics are not present.
     """
     # Make request to Admin Router on every agent to ensure metrics.
-    state_response = dcos_api_session.get('/state', host=dcos_api_session.masters[0], port=5050)
+    state_response = dcos_api_session.get('/state', host=dcos_api_session.mains[0], port=5050)
     assert state_response.status_code == 200
     state = state_response.json()
-    for agent in state['slaves']:
+    for agent in state['subordinates']:
         agent_url = '/system/v1/agent/{}/dcos-metadata/dcos-version.json'.format(agent['id'])
         response = dcos_api_session.get(agent_url)
         assert response.status_code == 200
@@ -291,9 +291,9 @@ def test_metrics_agent_adminrouter_nginx_drop_requests_seconds(dcos_api_session)
         check_adminrouter_metrics()
 
 
-def test_metrics_master_adminrouter_nginx_vts_processor(dcos_api_session):
-    """Assert that processed Admin Router metrics on master are present."""
-    node = dcos_api_session.masters[0]
+def test_metrics_main_adminrouter_nginx_vts_processor(dcos_api_session):
+    """Assert that processed Admin Router metrics on main are present."""
+    node = dcos_api_session.mains[0]
     # Make request to a fine-grained metrics annotated upstream of
     # Admin Router (IAM in this case).
     r = dcos_api_session.get('/acs/api/v1/auth/jwks', host=node)
@@ -371,10 +371,10 @@ def test_metrics_agents_adminrouter_nginx_vts(dcos_api_session):
 def test_metrics_agent_adminrouter_nginx_vts_processor(dcos_api_session):
     """Assert that processed Admin Router metrics on agent are present."""
     # Make request to Admin Router on every agent to ensure metrics.
-    state_response = dcos_api_session.get('/state', host=dcos_api_session.masters[0], port=5050)
+    state_response = dcos_api_session.get('/state', host=dcos_api_session.mains[0], port=5050)
     assert state_response.status_code == 200
     state = state_response.json()
-    for agent in state['slaves']:
+    for agent in state['subordinates']:
         agent_url = '/system/v1/agent/{}/dcos-metadata/dcos-version.json'.format(agent['id'])
         response = dcos_api_session.get(agent_url)
         assert response.status_code == 200
@@ -418,8 +418,8 @@ def test_metrics_agent_adminrouter_nginx_vts_processor(dcos_api_session):
 
 
 def test_metrics_diagnostics(dcos_api_session):
-    """Assert that DC/OS Diagnostics metrics on master are present."""
-    nodes = get_master_and_agents(dcos_api_session)
+    """Assert that DC/OS Diagnostics metrics on main are present."""
+    nodes = get_main_and_agents(dcos_api_session)
 
     for node in nodes:
         @retrying.retry(wait_fixed=STD_INTERVAL, stop_max_delay=METRICS_WAITTIME)
@@ -435,8 +435,8 @@ def test_metrics_diagnostics(dcos_api_session):
 
 
 def test_metrics_fluentbit(dcos_api_session):
-    """Ensure that fluent bit metrics are present on masters and agents"""
-    nodes = get_master_and_agents(dcos_api_session)
+    """Ensure that fluent bit metrics are present on mains and agents"""
+    nodes = get_main_and_agents(dcos_api_session)
 
     for node in nodes:
         @retrying.retry(wait_fixed=STD_INTERVAL, stop_max_delay=METRICS_WAITTIME)
@@ -523,14 +523,14 @@ def test_metrics_agent_statsd(dcos_api_session):
         metric_name_pfx + '_histogram_count': 1.0,
     }
 
-    if dcos_api_session.slaves:
-        marathon_app['constraints'] = [['hostname', 'LIKE', dcos_api_session.slaves[0]]]
-        check_statsd_app_metrics(dcos_api_session, marathon_app, dcos_api_session.slaves[0], expected_metrics)
+    if dcos_api_session.subordinates:
+        marathon_app['constraints'] = [['hostname', 'LIKE', dcos_api_session.subordinates[0]]]
+        check_statsd_app_metrics(dcos_api_session, marathon_app, dcos_api_session.subordinates[0], expected_metrics)
 
-    if dcos_api_session.public_slaves:
-        marathon_app['acceptedResourceRoles'] = ["slave_public"]
-        marathon_app['constraints'] = [['hostname', 'LIKE', dcos_api_session.public_slaves[0]]]
-        check_statsd_app_metrics(dcos_api_session, marathon_app, dcos_api_session.public_slaves[0], expected_metrics)
+    if dcos_api_session.public_subordinates:
+        marathon_app['acceptedResourceRoles'] = ["subordinate_public"]
+        marathon_app['constraints'] = [['hostname', 'LIKE', dcos_api_session.public_subordinates[0]]]
+        check_statsd_app_metrics(dcos_api_session, marathon_app, dcos_api_session.public_subordinates[0], expected_metrics)
 
 
 @contextlib.contextmanager
@@ -547,7 +547,7 @@ def deploy_and_cleanup_dcos_package(dcos_api_session, package_name, package_vers
         # Retry for 15 minutes for teardown completion
         @retrying.retry(wait_fixed=STD_INTERVAL, stop_max_delay=STD_WAITTIME)
         def wait_for_package_teardown():
-            state_response = dcos_api_session.get('/state', host=dcos_api_session.masters[0], port=5050)
+            state_response = dcos_api_session.get('/state', host=dcos_api_session.mains[0], port=5050)
             assert state_response.status_code == 200
             state = state_response.json()
 
@@ -565,7 +565,7 @@ def deploy_and_cleanup_dcos_package(dcos_api_session, package_name, package_vers
 def get_task_hostname(dcos_api_session, framework_name, task_name):
     # helper func that gets a framework's task's hostname
     mesos_id = node = ''
-    state_response = dcos_api_session.get('/state', host=dcos_api_session.masters[0], port=5050)
+    state_response = dcos_api_session.get('/state', host=dcos_api_session.mains[0], port=5050)
     assert state_response.status_code == 200
     state = state_response.json()
 
@@ -573,13 +573,13 @@ def get_task_hostname(dcos_api_session, framework_name, task_name):
         if framework['name'] == framework_name:
             for task in framework['tasks']:
                 if task['name'] == task_name:
-                    mesos_id = task['slave_id']
+                    mesos_id = task['subordinate_id']
                     break
             break
 
     assert mesos_id is not None
 
-    for agent in state['slaves']:
+    for agent in state['subordinates']:
         if agent['id'] == mesos_id:
             node = agent['hostname']
             break
@@ -679,7 +679,7 @@ def test_metrics_node(dcos_api_session):
         assert response.status_code == 200
         return response
 
-    nodes = get_master_and_agents(dcos_api_session)
+    nodes = get_main_and_agents(dcos_api_session)
 
     for node in nodes:
         response = wait_for_node_response(node)
@@ -690,18 +690,18 @@ def test_metrics_node(dcos_api_session):
         assert expected_dimension_response(response.json())
 
 
-def get_master_and_agents(dcos_api_session):
-    nodes = [dcos_api_session.masters[0]]
+def get_main_and_agents(dcos_api_session):
+    nodes = [dcos_api_session.mains[0]]
     nodes.extend(get_agents(dcos_api_session))
     return nodes
 
 
 def get_agents(dcos_api_session):
     nodes = []
-    if dcos_api_session.slaves:
-        nodes.append(dcos_api_session.slaves[0])
-    if dcos_api_session.public_slaves:
-        nodes.append(dcos_api_session.public_slaves[0])
+    if dcos_api_session.subordinates:
+        nodes.append(dcos_api_session.subordinates[0])
+    if dcos_api_session.public_subordinates:
+        nodes.append(dcos_api_session.public_subordinates[0])
     return nodes
 
 
@@ -1191,16 +1191,16 @@ def test_standalone_container_metrics(dcos_api_session):
             'containers in strict mode. See DCOS-42325.'
         )
         pytest.skip(reason)
-    # Fetch the mesos master state to get an agent ID
-    master_ip = dcos_api_session.masters[0]
-    r = dcos_api_session.get('/state', host=master_ip, port=5050)
+    # Fetch the mesos main state to get an agent ID
+    main_ip = dcos_api_session.mains[0]
+    r = dcos_api_session.get('/state', host=main_ip, port=5050)
     assert r.status_code == 200
     state = r.json()
 
     # Find hostname and ID of an agent
-    assert len(state['slaves']) > 0, 'No agents found in master state'
-    agent_hostname = state['slaves'][0]['hostname']
-    agent_id = state['slaves'][0]['id']
+    assert len(state['subordinates']) > 0, 'No agents found in main state'
+    agent_hostname = state['subordinates'][0]['hostname']
+    agent_id = state['subordinates'][0]['id']
     logging.debug('Selected agent %s at %s', agent_id, agent_hostname)
 
     def _post_agent(json):
@@ -1269,10 +1269,10 @@ def test_standalone_container_metrics(dcos_api_session):
                     retry_on_result=_should_retry_metrics_fetch,
                     retry_on_exception=lambda x: False)
     def _get_metrics():
-        master_response = dcos_api_session.get(
+        main_response = dcos_api_session.get(
             '/system/v1/agent/%s/metrics/v0/containers/%s/app' % (agent_id, container_id['value']),
-            host=master_ip)
-        return master_response
+            host=main_ip)
+        return main_response
 
     r = _post_agent(launch_data)
     assert r.status_code == 200, 'Received unexpected status code when launching standalone container'
@@ -1337,7 +1337,7 @@ def test_pod_application_metrics(dcos_api_session):
         # (one container + its parent container)
         @retrying.retry(wait_fixed=STD_INTERVAL, stop_max_delay=METRICS_WAITTIME)
         def get_container_ids_from_state(dcos_api_session, num_containers):
-            state_response = dcos_api_session.get('/state', host=dcos_api_session.masters[0], port=5050)
+            state_response = dcos_api_session.get('/state', host=dcos_api_session.mains[0], port=5050)
             assert state_response.status_code == 200
             state = state_response.json()
 

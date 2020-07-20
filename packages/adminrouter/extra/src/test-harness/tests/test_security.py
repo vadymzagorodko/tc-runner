@@ -7,7 +7,7 @@ class TestRedirect:
     @pytest.mark.parametrize(
         'path', ('/mesos_dns', '/net', '/exhibitor', '/mesos')
     )
-    def test_redirect(self, master_ar_process, valid_user_header, path):
+    def test_redirect(self, main_ar_process, valid_user_header, path):
         """
         URL's with no slash on end may redirect to the same URL with a
         slash appended. If this redirection uses the Host header to write
@@ -15,7 +15,7 @@ class TestRedirect:
         into setting the Host header to a bad host, and then redirecting
         the request (including an Authorization header) to the bad host.
         """
-        url = master_ar_process.make_url_from_path(path)
+        url = main_ar_process.make_url_from_path(path)
         headers = valid_user_header.copy()
         headers['Host'] = 'bad.host'
         resp = requests.get(

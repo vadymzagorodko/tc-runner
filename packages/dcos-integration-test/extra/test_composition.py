@@ -50,7 +50,7 @@ def test_dcos_cluster_is_up(dcos_api_session):
 @pytest.mark.supportedwindows
 def test_leader_election(dcos_api_session):
     mesos_resolver = dns.resolver.Resolver()
-    mesos_resolver.nameservers = dcos_api_session.masters
+    mesos_resolver.nameservers = dcos_api_session.mains
     mesos_resolver.port = 61053
     try:
         mesos_resolver.query('leader.mesos', 'A')
@@ -59,22 +59,22 @@ def test_leader_election(dcos_api_session):
 
 
 @pytest.mark.supportedwindows
-def test_if_all_mesos_masters_have_registered(dcos_api_session):
+def test_if_all_mesos_mains_have_registered(dcos_api_session):
     # Currently it is not possible to extract this information through Mesos'es
     # API, let's query zookeeper directly.
     zk_hostports = 'zk-1.zk:2181,zk-2.zk:2181,zk-3.zk:2181,zk-4.zk:2181,zk-5.zk:2181'
     zk = kazoo.client.KazooClient(hosts=zk_hostports, read_only=True)
-    master_ips = []
+    main_ips = []
 
     zk.start()
     for znode in zk.get_children("/mesos"):
         if not znode.startswith("json.info_"):
             continue
-        master = json.loads(zk.get("/mesos/" + znode)[0].decode('utf-8'))
-        master_ips.append(master['address']['ip'])
+        main = json.loads(zk.get("/mesos/" + znode)[0].decode('utf-8'))
+        main_ips.append(main['address']['ip'])
     zk.stop()
 
-    assert sorted(master_ips) == dcos_api_session.masters
+    assert sorted(main_ips) == dcos_api_session.mains
 
 
 @pytest.mark.supportedwindows
@@ -84,10 +84,10 @@ def test_if_all_exhibitors_are_in_sync(dcos_api_session):
 
     correct_data = sorted(r.json(), key=lambda k: k['hostname'])
 
-    for master_node_ip in dcos_api_session.masters:
+    for main_node_ip in dcos_api_session.mains:
         # This relies on the fact that Admin Router always proxies the local
         # Exhibitor.
-        resp = requests.get('http://{}/exhibitor/exhibitor/v1/cluster/status'.format(master_node_ip), verify=False)
+        resp = requests.get('http://{}/exhibitor/exhibitor/v1/cluster/status'.format(main_node_ip), verify=False)
         assert resp.status_code == 200
 
         tested_data = sorted(resp.json(), key=lambda k: k['hostname'])
@@ -96,10 +96,10 @@ def test_if_all_exhibitors_are_in_sync(dcos_api_session):
 
 def test_mesos_agent_role_assignment(dcos_api_session):
     state_endpoint = '/state.json'
-    for agent in dcos_api_session.public_slaves:
+    for agent in dcos_api_session.public_subordinates:
         r = dcos_api_session.get(state_endpoint, host=agent, port=5051)
-        assert r.json()['flags']['default_role'] == 'slave_public'
-    for agent in dcos_api_session.slaves:
+        assert r.json()['flags']['default_role'] == 'subordinate_public'
+    for agent in dcos_api_session.subordinates:
         r = dcos_api_session.get(state_endpoint, host=agent, port=5051)
         assert r.json()['flags']['default_role'] == '*'
 
@@ -124,7 +124,7 @@ def test_systemd_units_are_healthy(dcos_api_session) -> None:
     of units on every node.
     """
     # Insert all the diagnostics data programmatically
-    master_units = [
+    main_units = [
         'dcos-adminrouter.service',
         'dcos-cockroach.service',
         'dcos-cockroachdb-config-change.service',
@@ -132,13 +132,13 @@ def test_systemd_units_are_healthy(dcos_api_session) -> None:
         'dcos-cosmos.service',
         'dcos-exhibitor.service',
         'dcos-history.service',
-        'dcos-log-master.service',
-        'dcos-log-master.socket',
-        'dcos-logrotate-master.service',
-        'dcos-logrotate-master.timer',
+        'dcos-log-main.service',
+        'dcos-log-main.socket',
+        'dcos-logrotate-main.service',
+        'dcos-logrotate-main.timer',
         'dcos-marathon.service',
         'dcos-mesos-dns.service',
-        'dcos-mesos-master.service',
+        'dcos-mesos-main.service',
         'dcos-metronome.service',
         'dcos-signal.service',
         'dcos-signal.timer',
@@ -164,11 +164,11 @@ def test_systemd_units_are_healthy(dcos_api_session) -> None:
         'dcos-telegraf.service',
         'dcos-telegraf.socket',
         'dcos-fluent-bit.service']
-    slave_units = [
-        'dcos-mesos-slave.service']
-    public_slave_units = [
-        'dcos-mesos-slave-public.service']
-    all_slave_units = [
+    subordinate_units = [
+        'dcos-mesos-subordinate.service']
+    public_subordinate_units = [
+        'dcos-mesos-subordinate-public.service']
+    all_subordinate_units = [
         'dcos-docker-gc.service',
         'dcos-docker-gc.timer',
         'dcos-adminrouter-agent.service',
@@ -179,9 +179,9 @@ def test_systemd_units_are_healthy(dcos_api_session) -> None:
         'dcos-rexray.service']
 
     expected_units = {
-        "master": set(all_node_units + master_units),
-        "agent": set(all_node_units + all_slave_units + slave_units),
-        "agent_public": set(all_node_units + all_slave_units + public_slave_units),
+        "main": set(all_node_units + main_units),
+        "agent": set(all_node_units + all_subordinate_units + subordinate_units),
+        "agent_public": set(all_node_units + all_subordinate_units + public_subordinate_units),
     }
 
     # Collect the dcos-diagnostics output that `dcos-signal` uses to determine
@@ -199,9 +199,9 @@ def test_systemd_units_are_healthy(dcos_api_session) -> None:
     #             "UnitName": "dcos-unit-foo.service",
     #             "Nodes": [
     #                 {
-    #                     "Role": "agent" (or "agent_public", or "master")
+    #                     "Role": "agent" (or "agent_public", or "main")
     #                     "IP": "172.17.0.2",
-    #                     "Host": "dcos-e2e-7dd6638e-a6f5-4276-bf6b-c9a4d6066ea4-master-2",
+    #                     "Host": "dcos-e2e-7dd6638e-a6f5-4276-bf6b-c9a4d6066ea4-main-2",
     #                     "Health": 0 if node is healthy, 1 if unhealthy,
     #                     "Output": {
     #                         "dcos-unit-bar.service": "" (empty string if healthy),
@@ -218,7 +218,7 @@ def test_systemd_units_are_healthy(dcos_api_session) -> None:
     units_per_node = {}
     exp_units_per_node = {}
     for node, node_health in health_report["Nodes"].items():
-        role = node_health["Role"]  # Is one of master, agent, agent_public
+        role = node_health["Role"]  # Is one of main, agent, agent_public
         units_per_node[node] = set(node_health["Output"])
         exp_units_per_node[node] = expected_units[role]
     assert units_per_node == exp_units_per_node

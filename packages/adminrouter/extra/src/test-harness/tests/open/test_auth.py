@@ -17,7 +17,7 @@ EXHIBITOR_PATH = "/exhibitor/foo/bar"
 # class TestAuthzIAMBackendQuery:
 #     def test_if_iam_broken_resp_code_is_handled(
 #             self,
-#             master_ar_process_perclass,
+#             main_ar_process_perclass,
 #             valid_user_header,
 #             mocker,
 #             ):
@@ -34,7 +34,7 @@ EXHIBITOR_PATH = "/exhibitor/foo/bar"
 #                 SearchCriteria(1, True),
 #             }
 #         assert_endpoint_response(
-#             master_ar_process_perclass,
+#             main_ar_process_perclass,
 #             EXHIBITOR_PATH,
 #             500,
 #             assert_error_log=log_messages,
@@ -45,7 +45,7 @@ EXHIBITOR_PATH = "/exhibitor/foo/bar"
 class TestAuthnJWTValidatorOpen:
     def test_forged_auth_token(
             self,
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             forged_user_header,
             ):
         # Different validators emit different log messages, so we create two
@@ -57,7 +57,7 @@ class TestAuthnJWTValidatorOpen:
             }
 
         assert_endpoint_response(
-            master_ar_process_perclass,
+            main_ar_process_perclass,
             EXHIBITOR_PATH,
             401,
             assert_error_log=log_messages,

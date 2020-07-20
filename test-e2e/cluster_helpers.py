@@ -55,7 +55,7 @@ def dump_cluster_journals(cluster: Cluster, target_dir: Path) -> None:
     """
     target_dir.mkdir(parents=True)
     for role, nodes in (
-        ('master', cluster.masters),
+        ('main', cluster.mains),
         ('agent', cluster.agents),
         ('public_agent', cluster.public_agents),
     ):

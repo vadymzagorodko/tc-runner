@@ -185,7 +185,7 @@ def test_bootstrap(tmpdir):
             './active/single_source',
             './active/single_source_extra',
             './bin/',
-            './bin/mesos-master',
+            './bin/mesos-main',
             './etc/',
             './etc/dcos-service-configuration.json',
             './lib/',
@@ -206,7 +206,7 @@ def test_bootstrap(tmpdir):
                 'dcos.target.wants/dcos-foo.service',
                 'version',
                 'buildinfo.full.json',
-                'bin/mesos-master',
+                'bin/mesos-main',
                 'pkginfo.json',
                 'lib/',
                 'lib/libmesos.so'}}

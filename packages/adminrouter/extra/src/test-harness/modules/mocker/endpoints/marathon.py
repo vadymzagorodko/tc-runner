@@ -18,7 +18,7 @@ SCHEDULER_APP_TEMPLATE = {
     "id": "/scheduler-alwaysthere",
     "cmd": ("cd /opt/bitnami/nginx && harpoon initialize nginx && "
             "rm -rf /opt/bitnami/nginx/html && ln -s "
-            "/mnt/mesos/sandbox/hello-nginx-master/ /opt/bitnami/nginx/html "
+            "/mnt/mesos/sandbox/hello-nginx-main/ /opt/bitnami/nginx/html "
             "&& harpoon start --foreground nginx"),
     "args": None,
     "user": None,
@@ -157,7 +157,7 @@ SCHEDULER_APP_TEMPLATE = {
             "version": "2017-01-16T15:48:18.007Z",
             "id": "nginx.333d80f4-dc03-11e6-b993-e248be6c2f96",
             "appId": "/scheduler-alwaysthere",
-            "slaveId": "8ad5a85c-c14b-4cca-a089-b9dc006e7286-S0",
+            "subordinateId": "8ad5a85c-c14b-4cca-a089-b9dc006e7286-S0",
             "host": "127.0.0.1",
             "healthCheckResults": [
                 {

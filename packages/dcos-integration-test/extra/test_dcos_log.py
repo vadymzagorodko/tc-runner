@@ -51,7 +51,7 @@ def check_response_ok(response: requests.models.Response, headers: dict):
 
 
 def test_log_text(dcos_api_session):
-    for node in dcos_api_session.masters + dcos_api_session.all_slaves:
+    for node in dcos_api_session.mains + dcos_api_session.all_subordinates:
         response = dcos_api_session.logs.get('/v1/range/?limit=10', node=node)
         check_response_ok(response, {'Content-Type': 'text/plain'})
 
@@ -62,21 +62,21 @@ def test_log_text(dcos_api_session):
 
 
 def test_log_json(dcos_api_session):
-    for node in dcos_api_session.masters + dcos_api_session.all_slaves:
+    for node in dcos_api_session.mains + dcos_api_session.all_subordinates:
         response = dcos_api_session.logs.get('/v1/range/?limit=1', node=node, headers={'Accept': 'application/json'})
         check_response_ok(response, {'Content-Type': 'application/json'})
         validate_json_entry(response.json())
 
 
 def test_log_server_sent_events(dcos_api_session):
-    for node in dcos_api_session.masters + dcos_api_session.all_slaves:
+    for node in dcos_api_session.mains + dcos_api_session.all_subordinates:
         response = dcos_api_session.logs.get('/v1/range/?limit=1', node=node, headers={'Accept': 'text/event-stream'})
         check_response_ok(response, {'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache'})
         validate_sse_entry(response.text)
 
 
 def test_stream(dcos_api_session):
-    for node in dcos_api_session.masters + dcos_api_session.all_slaves:
+    for node in dcos_api_session.mains + dcos_api_session.all_subordinates:
         response = dcos_api_session.logs.get('/v1/stream/?skip_prev=1', node=node, stream=True,
                                              headers={'Accept': 'text/event-stream'})
         check_response_ok(response, {'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache'})
@@ -88,14 +88,14 @@ def test_stream(dcos_api_session):
 
 
 def test_log_proxy(dcos_api_session):
-    r = dcos_api_session.get('/mesos/master/slaves')
+    r = dcos_api_session.get('/mesos/main/subordinates')
     check_response_ok(r, {})
 
     data = r.json()
-    slaves_ids = sorted(x['id'] for x in data['slaves'] if x['hostname'] in dcos_api_session.all_slaves)
+    subordinates_ids = sorted(x['id'] for x in data['subordinates'] if x['hostname'] in dcos_api_session.all_subordinates)
 
-    for slave_id in slaves_ids:
-        response = dcos_api_session.get('/system/v1/agent/{}/logs/v1/range/?skip_prev=10&limit=10'.format(slave_id))
+    for subordinate_id in subordinates_ids:
+        response = dcos_api_session.get('/system/v1/agent/{}/logs/v1/range/?skip_prev=10&limit=10'.format(subordinate_id))
         check_response_ok(response, {'Content-Type': 'text/plain'})
         lines = list(filter(lambda x: x != '', response.text.split('\n')))
         assert len(lines) == 10, 'Expect 10 log entries. Got {}. All lines {}'.format(len(lines), lines)
@@ -183,7 +183,7 @@ def get_task_url(dcos_api_session, task_name, stream=False):
 
     framework_id = None
     executor_id = None
-    slave_id = None
+    subordinate_id = None
     container_id = None
 
     state_response_json = state_response.json()
@@ -207,14 +207,14 @@ def get_task_url(dcos_api_session, task_name, stream=False):
             assert 'framework_id' in task, 'Missing `framework_id` in task. Got {}'.format(state_response_json)
             assert 'executor_id' in task, 'Missing `executor_id` in task. Got {}'.format(state_response_json)
             assert 'id' in task, 'Missing `id` in task. Got {}'.format(state_response_json)
-            assert 'slave_id' in task, 'Missing `slave_id` in task. Got {}'.format(state_response_json)
+            assert 'subordinate_id' in task, 'Missing `subordinate_id` in task. Got {}'.format(state_response_json)
 
             framework_id = task['framework_id']
             # if task['executor_id'] is empty, we should use task['id']
             executor_id = task['executor_id']
             if not executor_id:
                 executor_id = task['id']
-            slave_id = task['slave_id']
+            subordinate_id = task['subordinate_id']
 
             assert task['statuses'], 'Invalid field `statuses`. Got {}'.format(state_response_json)
             statuses = task['statuses']
@@ -236,13 +236,13 @@ def get_task_url(dcos_api_session, task_name, stream=False):
             assert container_id
 
     # validate all required fields
-    assert slave_id, 'Missing slave_id'
+    assert subordinate_id, 'Missing subordinate_id'
     assert framework_id, 'Missing framework_id'
     assert executor_id, 'Missing executor_id'
     assert container_id, 'Missing container_id'
 
     endpoint_type = 'stream' if stream else 'range'
-    return '/system/v1/agent/{}/logs/v1/{}/framework/{}/executor/{}/container/{}'.format(slave_id, endpoint_type,
+    return '/system/v1/agent/{}/logs/v1/{}/framework/{}/executor/{}/container/{}'.format(subordinate_id, endpoint_type,
                                                                                          framework_id, executor_id,
                                                                                          container_id)
 
@@ -257,7 +257,7 @@ def validate_journald_cursor(c: str, cursor_regexp=None):
 
 
 def test_log_v2_text(dcos_api_session):
-    for node in dcos_api_session.masters + dcos_api_session.all_slaves:
+    for node in dcos_api_session.mains + dcos_api_session.all_subordinates:
         response = dcos_api_session.logs.get('/v2/component?limit=10', node=node)
         check_response_ok(response, {'Content-Type': 'text/plain'})
 
@@ -268,7 +268,7 @@ def test_log_v2_text(dcos_api_session):
 
 
 def test_log_v2_server_sent_events(dcos_api_session):
-    for node in dcos_api_session.masters + dcos_api_session.all_slaves:
+    for node in dcos_api_session.mains + dcos_api_session.all_subordinates:
         response = dcos_api_session.logs.get(
             '/v2/component?limit=1', node=node, headers={'Accept': 'text/event-stream'}, stream=True)
         check_response_ok(response, {'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache'})
@@ -280,7 +280,7 @@ def test_log_v2_server_sent_events(dcos_api_session):
 
 
 def test_log_v2_stream(dcos_api_session):
-    for node in dcos_api_session.masters + dcos_api_session.all_slaves:
+    for node in dcos_api_session.mains + dcos_api_session.all_subordinates:
         response = dcos_api_session.logs.get('/v2/component?skip=-1', node=node, stream=True,
                                              headers={'Accept': 'text/event-stream'})
         check_response_ok(response, {'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache'})
@@ -292,14 +292,14 @@ def test_log_v2_stream(dcos_api_session):
 
 
 def test_log_v2_proxy(dcos_api_session):
-    r = dcos_api_session.get('/mesos/master/slaves')
+    r = dcos_api_session.get('/mesos/main/subordinates')
     check_response_ok(r, {})
 
     data = r.json()
-    slaves_ids = sorted(x['id'] for x in data['slaves'] if x['hostname'] in dcos_api_session.all_slaves)
+    subordinates_ids = sorted(x['id'] for x in data['subordinates'] if x['hostname'] in dcos_api_session.all_subordinates)
 
-    for slave_id in slaves_ids:
-        response = dcos_api_session.get('/system/v1/agent/{}/logs/v2/component?skip=-10&limit=10'.format(slave_id))
+    for subordinate_id in subordinates_ids:
+        response = dcos_api_session.get('/system/v1/agent/{}/logs/v2/component?skip=-10&limit=10'.format(subordinate_id))
         check_response_ok(response, {'Content-Type': 'text/plain'})
         lines = list(filter(lambda x: x != '', response.text.split('\n')))
         assert len(lines) == 10, 'Expect 10 log entries. Got {}. All lines {}'.format(len(lines), lines)

@@ -28,7 +28,7 @@ authed_endpoints = [
     '/service/scheduler-alwaysthere/foo/bar',
     '/service/nest1/scheduler-alwaysthere/foo/bar',
     '/service/nest2/nest1/scheduler-alwaysthere/foo/bar',
-    '/slave/{}'.format(AGENT1_ID),
+    '/subordinate/{}'.format(AGENT1_ID),
     '/system/health/v1/foo/bar',
     '/system/v1/agent/{}/logs/foo/bar'.format(AGENT1_ID),
     '/system/v1/agent/{}/metrics/v0/foo/bar'.format(AGENT1_ID),
@@ -46,14 +46,14 @@ authed_endpoints = [
 
 #     @pytest.mark.parametrize("path", authed_endpoints)
 #     def test_if_unknown_user_is_forbidden_access(
-#             self, mocker, master_ar_process, path, valid_user_header):
+#             self, mocker, main_ar_process, path, valid_user_header):
 #         log_messages = {
 #             'User not found: `bozydar`':
 #                 SearchCriteria(1, True)}
 #         with iam_denies_all_requests(mocker):
 #             with assert_iam_queried_for_uid(mocker, 'bozydar'):
 #                 assert_endpoint_response(
-#                     master_ar_process,
+#                     main_ar_process,
 #                     path,
 #                     401,
 #                     headers=valid_user_header,
@@ -61,13 +61,13 @@ authed_endpoints = [
 
 #     @pytest.mark.parametrize("path", authed_endpoints)
 #     def test_if_known_user_is_permitted_access(
-#             self, mocker, master_ar_process, path, valid_user_header):
+#             self, mocker, main_ar_process, path, valid_user_header):
 
 #        is_auth_location = path.startswith("/acs/api/v1")
 #        with assert_iam_queried_for_uid(
 #                mocker, 'bozydar', expect_two_iam_calls=is_auth_location):
 #            assert_endpoint_response(
-#                master_ar_process,
+#                main_ar_process,
 #                path,
 #                200,
 #                headers=valid_user_header,
@@ -80,12 +80,12 @@ class TestDcosMetadata:
                                       "nest1/nested-metadata-testfile.json"])
     def test_if_metadata_files_are_handled(
             self,
-            master_ar_process,
+            main_ar_process,
             valid_user_header,
             uniq_content,
             path):
 
-        url = master_ar_process.make_url_from_path('/dcos-metadata/{}'.format(path))
+        url = main_ar_process.make_url_from_path('/dcos-metadata/{}'.format(path))
 
         with overridden_file_content(
                 '/opt/mesosphere/active/dcos-metadata/etc/{}'.format(path),

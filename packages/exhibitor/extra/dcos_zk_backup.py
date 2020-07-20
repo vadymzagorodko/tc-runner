@@ -142,10 +142,10 @@ def restore_zookeeper(backup: Path, tmp_dir: Path, verbose: bool) -> None:
 
     ZooKeeper changes files while it is running.
     In order to have a consistent restore, one must stop ZooKeeper on all
-    master nodes, execute this procedure on all master nodes, and then start
-    ZooKeeper again on all master nodes.
+    main nodes, execute this procedure on all main nodes, and then start
+    ZooKeeper again on all main nodes.
 
-    Stopping ZooKeeper on all master nodes inevitably causes the DC/OS cluster
+    Stopping ZooKeeper on all main nodes inevitably causes the DC/OS cluster
     to experience downtime.  The restore procedure is intended for recovering
     from an unusable DC/OS cluster as a last resort measure.
 
@@ -256,7 +256,7 @@ class DCOSZooKeeperCli:
         parser = ArgumentParser(
             description=(
                 'Command line utility to backup and restore the local '
-                'ZooKeeper instance on DC/OS master nodes.'
+                'ZooKeeper instance on DC/OS main nodes.'
             )
         )
         parser.add_argument(
@@ -281,7 +281,7 @@ class DCOSZooKeeperCli:
             ).format(executable=sys.argv[0]),
             description=(
                 'Create a backup of the ZooKeeper instance running on this '
-                'DC/OS master node.'
+                'DC/OS main node.'
             ),
         )
         parser.add_argument(
@@ -330,7 +330,7 @@ class DCOSZooKeeperCli:
                 '{executable} restore [-h] [-t TMP_DIR] [-v] backup_path'
             ).format(executable=sys.argv[0]),
             description=(
-                'Restore the ZooKeeper instance running on this DC/OS master '
+                'Restore the ZooKeeper instance running on this DC/OS main '
                 'node from the given backup.'
             ),
         )

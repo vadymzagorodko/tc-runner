@@ -28,7 +28,7 @@ log = logging.getLogger(__name__)
 logging.basicConfig(format='[%(levelname)s] %(message)s', level='INFO')
 
 
-# This script will run on a master server after the IAM service has been running.
+# This script will run on a main server after the IAM service has been running.
 ZK_HOSTS = 'zk-1.zk:2181,zk-2.zk:2181,zk-3.zk:2181,zk-4.zk:2181,zk-5.zk:2181'
 ZK_USERS_PATH = '/dcos/users'
 # To keep this script simple and avoid authentication and authorization this
@@ -112,7 +112,7 @@ def main() -> None:
             log.info('Deleting ZK path `%s`', zk_uid_path)
             zk.delete(zk_uid_path)
         except kazoo.exceptions.NoNodeError:
-            # It is possible that the user was removed by another master running
+            # It is possible that the user was removed by another main running
             # this script.
             log.warn('ZK node `%s` no longer exists.', zk_uid_path)
 
@@ -121,7 +121,7 @@ def main() -> None:
         log.info('Removing legacy ZK path `%s`.', ZK_USERS_PATH)
         zk.delete(ZK_USERS_PATH)
     except kazoo.exceptions.NoNodeError:
-        # It is possible that the user was removed by another master running
+        # It is possible that the user was removed by another main running
         # this script.
         log.warn('ZK node `%s` no longer exists.', ZK_USERS_PATH)
 

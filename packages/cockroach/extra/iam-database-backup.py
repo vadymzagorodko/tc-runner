@@ -13,7 +13,7 @@ from dcos_internal_utils import utils
 and backup the IAM database.
 
 This program is expected to be executed manually before invasive procedures
-such as master replacement or cluster upgrade.
+such as main replacement or cluster upgrade.
 """
 
 

@@ -25,7 +25,7 @@ class DcosDnsResolver(BaseResolver):
                 "ip": DEFAULT_LEADER_ADDR,
                 "ttl": DEFAULT_TTL,
             },
-            "master.mesos.": {
+            "main.mesos.": {
                 "ip": DEFAULT_MASTER_ADDR,
                 "ttl": DEFAULT_TTL,
             },
@@ -33,7 +33,7 @@ class DcosDnsResolver(BaseResolver):
                 "ip": DEFAULT_AGENT_ADDR,
                 "ttl": DEFAULT_TTL,
             },
-            "slave.mesos.": {
+            "subordinate.mesos.": {
                 "ip": DEFAULT_SLAVE_ADDR,
                 "ttl": DEFAULT_TTL,
             },

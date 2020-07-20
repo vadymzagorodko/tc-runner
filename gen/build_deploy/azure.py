@@ -25,17 +25,17 @@ ILLEGAL_ARM_CHARS_PATTERN = re.compile("[']")
 DOWNLOAD_URL_TEMPLATE = ("{download_url}{reproducible_artifact_path}/azure/{arm_template_name}")
 
 INSTANCE_GROUPS = {
-    'master': {
-        'report_name': 'MasterServerGroup',
-        'roles': ['master', 'azure_master']
+    'main': {
+        'report_name': 'MainServerGroup',
+        'roles': ['main', 'azure_main']
     },
-    'slave': {
-        'report_name': 'SlaveServerGroup',
-        'roles': ['slave']
+    'subordinate': {
+        'report_name': 'SubordinateServerGroup',
+        'roles': ['subordinate']
     },
-    'slave_public': {
-        'report_name': 'PublicSlaveServerGroup',
-        'roles': ['slave_public']
+    'subordinate_public': {
+        'report_name': 'PublicSubordinateServerGroup',
+        'roles': ['subordinate_public']
     }
 }
 
@@ -56,11 +56,11 @@ azure_base_source = Source(entry={
         'resolvers': '["168.63.129.16"]',
         'ip_detect_contents': yaml.dump(pkg_resources.resource_string('gen', 'ip-detect/azure.sh').decode()),
         'ip6_detect_contents': yaml.dump(pkg_resources.resource_string('gen', 'ip-detect/azure6.sh').decode()),
-        'master_discovery': 'static',
+        'main_discovery': 'static',
         'exhibitor_storage_backend': 'azure',
-        'master_cloud_config': '{{ master_cloud_config }}',
-        'slave_cloud_config': '{{ slave_cloud_config }}',
-        'slave_public_cloud_config': '{{ slave_public_cloud_config }}',
+        'main_cloud_config': '{{ main_cloud_config }}',
+        'subordinate_cloud_config': '{{ subordinate_cloud_config }}',
+        'subordinate_public_cloud_config': '{{ subordinate_public_cloud_config }}',
         'fault_domain_detect_contents': yaml.dump(
             pkg_resources.resource_string('gen', 'fault-domain-detect/cloud.sh').decode())
     },
@@ -130,14 +130,14 @@ def transform(cloud_config_yaml_str):
 
 def render_arm(
         arm_template,
-        master_cloudconfig_yaml_str,
-        slave_cloudconfig_yaml_str,
-        slave_public_cloudconfig_yaml_str):
+        main_cloudconfig_yaml_str,
+        subordinate_cloudconfig_yaml_str,
+        subordinate_public_cloudconfig_yaml_str):
 
     template_str = gen.template.parse_str(arm_template).render({
-        'master_cloud_config': transform(master_cloudconfig_yaml_str),
-        'slave_cloud_config': transform(slave_cloudconfig_yaml_str),
-        'slave_public_cloud_config': transform(slave_public_cloudconfig_yaml_str)
+        'main_cloud_config': transform(main_cloudconfig_yaml_str),
+        'subordinate_cloud_config': transform(subordinate_cloudconfig_yaml_str),
+        'subordinate_public_cloud_config': transform(subordinate_public_cloudconfig_yaml_str)
     })
 
     # Add in some metadata to help support engineers
@@ -166,7 +166,7 @@ def gen_templates(gen_arguments, arm_template, extra_sources):
     # Add general services
     cloud_config = results.utils.add_services(cloud_config, 'canonical')
 
-    # Specialize for master, slave, slave_public
+    # Specialize for main, subordinate, subordinate_public
     variant_cloudconfig = {}
     for variant, params in INSTANCE_GROUPS.items():
         cc_variant = deepcopy(cloud_config)
@@ -182,29 +182,29 @@ def gen_templates(gen_arguments, arm_template, extra_sources):
     # Render the arm
     arm = render_arm(
         results.templates[arm_template + '.json'],
-        variant_cloudconfig['master'],
-        variant_cloudconfig['slave'],
-        variant_cloudconfig['slave_public'])
+        variant_cloudconfig['main'],
+        variant_cloudconfig['subordinate'],
+        variant_cloudconfig['subordinate_public'])
 
     return (arm, results)
 
 
-def master_list_arm_json(num_masters, varietal):
+def main_list_arm_json(num_mains, varietal):
     '''
-    Return a JSON string containing a list of ARM expressions for the master IP's of the cluster.
+    Return a JSON string containing a list of ARM expressions for the main IP's of the cluster.
 
-    @param num_masters: int, number of master nodes in the cluster
+    @param num_mains: int, number of main nodes in the cluster
     @param varietal: string, indicate template varietal to build for either 'acs' or 'dcos'
     '''
 
     if varietal == 'dcos':
-        arm_expression = "[[[reference('masterNodeNic{}').ipConfigurations[0].properties.privateIPAddress]]]"
+        arm_expression = "[[[reference('mainNodeNic{}').ipConfigurations[0].properties.privateIPAddress]]]"
     elif varietal == 'acs':
-        arm_expression = "[[[reference(variables('masterVMNic')[{}]).ipConfigurations[0].properties.privateIPAddress]]]"
+        arm_expression = "[[[reference(variables('mainVMNic')[{}]).ipConfigurations[0].properties.privateIPAddress]]]"
     else:
         raise ValueError("Unknown Azure varietal specified")
 
-    return json.dumps([arm_expression.format(x) for x in range(num_masters)])
+    return json.dumps([arm_expression.format(x) for x in range(num_mains)])
 
 
 azure_dcos_source = Source({
@@ -222,46 +222,46 @@ azure_acs_source = Source({
     'must': {
         'ui_tracking': 'false',
         'telemetry_enabled': 'false',
-        'exhibitor_azure_prefix': Late("[[[variables('masterPublicIPAddressName')]]]"),
-        'exhibitor_azure_account_name': Late("[[[variables('masterStorageAccountExhibitorName')]]]"),
+        'exhibitor_azure_prefix': Late("[[[variables('mainPublicIPAddressName')]]]"),
+        'exhibitor_azure_account_name': Late("[[[variables('mainStorageAccountExhibitorName')]]]"),
         'exhibitor_azure_account_key': Late(
             "[[[listKeys(resourceId('Microsoft.Storage/storageAccounts', "
-            "variables('masterStorageAccountExhibitorName')), '2015-06-15').key1]]]"),
-        'cluster_name': Late("[[[variables('masterPublicIPAddressName')]]]"),
+            "variables('mainStorageAccountExhibitorName')), '2015-06-15').key1]]]"),
+        'cluster_name': Late("[[[variables('mainPublicIPAddressName')]]]"),
         'bootstrap_tmp_dir': "/var/tmp"
     }
 })
 
 
-def make_template(num_masters, gen_arguments, varietal, bootstrap_variant_prefix):
+def make_template(num_mains, gen_arguments, varietal, bootstrap_variant_prefix):
     '''
-    Return a tuple: the generated template for num_masters and the artifact dict.
+    Return a tuple: the generated template for num_mains and the artifact dict.
 
-    @param num_masters: int, number of master nodes to embed in the generated template
+    @param num_mains: int, number of main nodes to embed in the generated template
     @param gen_arguments: dict, args to pass to the gen library. These are user
                           input arguments which get filled in/prompted for.
     @param varietal: string, indicate template varietal to build for either 'acs' or 'dcos'
     '''
 
-    master_list_source = Source()
-    master_list_source.add_must('master_list', Late(master_list_arm_json(num_masters, varietal)))
-    master_list_source.add_must('num_masters', str(num_masters))
+    main_list_source = Source()
+    main_list_source.add_must('main_list', Late(main_list_arm_json(num_mains, varietal)))
+    main_list_source.add_must('num_mains', str(num_mains))
 
     if varietal == 'dcos':
         arm, results = gen_templates(
             gen_arguments,
             'azuredeploy',
-            extra_sources=[master_list_source, azure_dcos_source])
+            extra_sources=[main_list_source, azure_dcos_source])
     elif varietal == 'acs':
         arm, results = gen_templates(
             gen_arguments,
             'acs',
-            extra_sources=[master_list_source, azure_acs_source])
+            extra_sources=[main_list_source, azure_acs_source])
     else:
         raise ValueError("Unknown Azure varietal specified")
 
     yield {
-        'channel_path': 'azure/{}{}-{}master.azuredeploy.json'.format(bootstrap_variant_prefix, varietal, num_masters),
+        'channel_path': 'azure/{}{}-{}main.azuredeploy.json'.format(bootstrap_variant_prefix, varietal, num_mains),
         'local_content': arm,
         'content_type': 'application/json; charset=utf-8'
     }
@@ -274,10 +274,10 @@ def make_template(num_masters, gen_arguments, varietal, bootstrap_variant_prefix
 
 def do_create(tag, build_name, reproducible_artifact_path, commit, variant_arguments, all_completes):
     for arm_t in ['dcos', 'acs']:
-        for num_masters in [1, 3, 5]:
+        for num_mains in [1, 3, 5]:
             for bootstrap_name, gen_arguments in variant_arguments.items():
                 yield from make_template(
-                    num_masters,
+                    num_mains,
                     gen_arguments,
                     arm_t,
                     pkgpanda.util.variant_prefix(bootstrap_name))
@@ -302,13 +302,13 @@ def gen_buttons(build_name, reproducible_artifact_path, tag, commit, download_ur
         encode_url_as_param(DOWNLOAD_URL_TEMPLATE.format(
             download_url=download_url,
             reproducible_artifact_path=reproducible_artifact_path,
-            arm_template_name='dcos-{}master.azuredeploy.json'.format(x)))
+            arm_template_name='dcos-{}main.azuredeploy.json'.format(x)))
         for x in [1, 3, 5]]
     acs_urls = [
         encode_url_as_param(DOWNLOAD_URL_TEMPLATE.format(
             download_url=download_url,
             reproducible_artifact_path=reproducible_artifact_path,
-            arm_template_name='acs-{}master.azuredeploy.json'.format(x)))
+            arm_template_name='acs-{}main.azuredeploy.json'.format(x)))
         for x in [1, 3, 5]]
 
     return gen.template.parse_resources('azure/templates/azure.html').render({

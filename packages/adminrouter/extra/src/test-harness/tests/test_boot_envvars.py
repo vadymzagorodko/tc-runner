@@ -20,7 +20,7 @@ def empty_file(tmp_file):
 
 
 class TestSecretKeyFilePathEnvVarBehaviour:
-    @pytest.mark.parametrize('role', ['master', 'agent'])
+    @pytest.mark.parametrize('role', ['main', 'agent'])
     def test_if_not_defining_the_var_is_handled(self, nginx_class, role):
         # Scanning for the exact log entry is bad, but in this case - can't be
         # avoided.
@@ -37,7 +37,7 @@ class TestSecretKeyFilePathEnvVarBehaviour:
 
         assert lbf.extra_matches == {}
 
-    @pytest.mark.parametrize('role', ['master', 'agent'])
+    @pytest.mark.parametrize('role', ['main', 'agent'])
     def test_if_var_pointing_to_empty_file_is_handled(
             self, nginx_class, role, empty_file):
         # Scanning for the exact log entry is bad, but in this case - can't be
@@ -55,7 +55,7 @@ class TestSecretKeyFilePathEnvVarBehaviour:
 
     # TODO: ATM in Agent-Open there are no paths we can test auth with
     @pytest.mark.parametrize('role,use_empty',
-                             [('master', False), ('master', True)],
+                             [('main', False), ('main', True)],
                              )
     def test_if_bad_var_fails_all_requests(
             self, nginx_class, role, use_empty, empty_file, valid_user_header):
@@ -235,7 +235,7 @@ class TestUpstreamsEnvVarBehaviour:
         # verify that all the requests from cache go there:
         filter_regexp = {
             'Mesos upstream: http://127.0.0.2:5050': SearchCriteria(1, True),
-            'Request url: http://127.0.0.2:5050/master/state-summary': SearchCriteria(1, True),
+            'Request url: http://127.0.0.2:5050/main/state-summary': SearchCriteria(1, True),
         }
 
         ar = nginx_class(upstream_mesos="http://127.0.0.2:5050")
@@ -269,7 +269,7 @@ class TestUpstreamsEnvVarBehaviour:
         # verify that all the requests go to the new upstream
         filter_regexp = {
             'Mesos upstream: http://127.0.0.3:5050': SearchCriteria(1, True),
-            'Request url: http://127.0.0.3:5050/master/state-summary': SearchCriteria(1, True),
+            'Request url: http://127.0.0.3:5050/main/state-summary': SearchCriteria(1, True),
         }
         ar = nginx_class(upstream_mesos="http://127.0.0.3:5050")
 
@@ -295,7 +295,7 @@ class TestUpstreamsEnvVarBehaviour:
 class TestHostIPVarBehavriour:
     def test_if_absent_var_is_handled(self, nginx_class, mocker):
         filter_regexp = {
-            'Local Mesos Master IP: unknown': SearchCriteria(1, True),
+            'Local Mesos Main IP: unknown': SearchCriteria(1, True),
         }
         ar = nginx_class(host_ip=None)
 
@@ -312,7 +312,7 @@ class TestHostIPVarBehavriour:
         ["not-an-ip", "1,3,4,4", "1.2.3.300", 'aaa.1.2.3.4', '1.2.3.4.bccd'])
     def test_if_var_is_verified(self, invalid_ip, nginx_class, mocker):
         filter_regexp = {
-            'Local Mesos Master IP: unknown': SearchCriteria(1, True),
+            'Local Mesos Main IP: unknown': SearchCriteria(1, True),
             'HOST_IP var is not a valid ipv4: {}'.format(invalid_ip):
                 SearchCriteria(1, True),
         }
@@ -329,7 +329,7 @@ class TestHostIPVarBehavriour:
     @pytest.mark.parametrize("valid_ip", ["1.2.3.4", "255.255.255.255", "0.0.0.1"])
     def test_if_var_is_honoured(self, valid_ip, nginx_class, mocker):
         filter_regexp = {
-            'Local Mesos Master IP: {}'.format(valid_ip): SearchCriteria(1, True),
+            'Local Mesos Main IP: {}'.format(valid_ip): SearchCriteria(1, True),
         }
         ar = nginx_class(host_ip=valid_ip)
 
@@ -342,7 +342,7 @@ class TestHostIPVarBehavriour:
         assert lbf.extra_matches == {}
 
 
-class TestAuthModuleDisablingMaster:
+class TestAuthModuleDisablingMain:
     @pytest.mark.parametrize(
         "enable_keyword",
         ["enabled", "true", "yes", "of_course", "make it so!",

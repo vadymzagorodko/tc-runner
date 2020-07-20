@@ -53,10 +53,10 @@ class MockerBase:
         res.append(ReflectingUnixSocketEndpoint('/run/dcos/pkgpanda-api.sock'))
         # exhibitor
         res.append(ReflectingTcpIpEndpoint(ip='127.0.0.1', port=8181))
-        # Mesos masters
+        # Mesos mains
         res.append(MesosEndpoint(ip='127.0.0.2', port=5050))
         res.append(MesosEndpoint(ip='127.0.0.3', port=5050))
-        # Marathon instances running on the masters
+        # Marathon instances running on the mains
         res.append(MarathonEndpoint(ip='127.0.0.1', port=8080))
         res.append(MarathonEndpoint(ip='127.0.0.2', port=8080))
         # cosmos
@@ -100,7 +100,7 @@ class MockerBase:
         # the requests which i.e. used mesos_dns'es second entry in SRV reply.
         # Successfull tests will never use it.
         res.append(ReflectingTcpIpEndpoint(ip='127.0.0.1', port=16002))
-        # other Admin Router Masters, used i.e. during Marathon leader testing
+        # other Admin Router Mains, used i.e. during Marathon leader testing
         res.append(ReflectingTcpIpEndpoint(ip='127.0.0.2', port=80))
         res.append(ReflectingTcpIpEndpoint(ip='127.0.0.3', port=80))
         res.append(ReflectingTcpIpEndpoint(

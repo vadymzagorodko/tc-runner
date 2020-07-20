@@ -189,7 +189,7 @@ aws_advanced_source = gen.internals.Source({
         validate_aws_bucket_access
     ],
     'default': {
-        'num_masters': '5',
+        'num_mains': '5',
         'aws_template_upload': 'true',
         'aws_template_storage_bucket_path_autocreate': 'true',
         'bootstrap_id': lambda: gen.calc.calculate_environment_variable('BOOTSTRAP_ID'),
@@ -275,7 +275,7 @@ def do_aws_cf_configure():
     extra_sources = [
         gen.build_deploy.aws.aws_base_source,
         aws_advanced_source,
-        gen.build_deploy.aws.groups['master'][1]]
+        gen.build_deploy.aws.groups['main'][1]]
 
     sources, targets, _ = gen.get_dcosconfig_source_target_and_templates(gen_config, [], extra_sources)
     targets.append(get_aws_advanced_target())
@@ -394,7 +394,7 @@ def determine_config_type(config_path=CONFIG_PATH):
         "docker_remove_delay": None,
         "exhibitor_storage_backend": 'static',
         "gc_delay": None,
-        "master_discovery": 'static',
+        "main_discovery": 'static',
         "roles": None,
         "weights": None
     }
@@ -436,19 +436,19 @@ def success(config: Config):
     :param config_path: path to config.yaml
     :type config_path: str | CONFIG_PATH (genconf/config.yaml)
     """
-    master_ips = config.hacky_default_get('master_list', [])
+    main_ips = config.hacky_default_get('main_list', [])
     agent_ips = config.hacky_default_get('agent_list', [])
 
     code = 200
     msgs = {
         'success': "",
-        'master_count': 0,
+        'main_count': 0,
         'agent_count': 0
     }
-    if not master_ips or not agent_ips:
+    if not main_ips or not agent_ips:
         code = 400
         return msgs, code
-    msgs['success'] = 'http://{}'.format(master_ips[0])
-    msgs['master_count'] = len(master_ips)
+    msgs['success'] = 'http://{}'.format(main_ips[0])
+    msgs['main_count'] = len(main_ips)
     msgs['agent_count'] = len(agent_ips)
     return msgs, code

@@ -25,7 +25,7 @@ def test_move_external_volume_to_new_agent(dcos_api_session):
     if expanded_config.get('security') == 'strict':
         pytest.skip('See: https://jira.mesosphere.com/browse/DCOS_OSS-4922')
 
-    hosts = dcos_api_session.slaves[0], dcos_api_session.slaves[-1]
+    hosts = dcos_api_session.subordinates[0], dcos_api_session.subordinates[-1]
     test_uuid = uuid.uuid4().hex
     test_label = 'integration-test-move-external-volume-{}'.format(test_uuid)
     mesos_volume_path = 'volume'
@@ -109,7 +109,7 @@ def test_move_external_volume_to_new_agent(dcos_api_session):
                 'disk': 0,
                 'cmd': delete_cmd}}
         try:
-            # We use a metronome job to work around the `aws-deploy` integration tests where the master doesn't have
+            # We use a metronome job to work around the `aws-deploy` integration tests where the main doesn't have
             # volume permissions so all volume actions need to be performed from the agents.
             dcos_api_session.metronome_one_off(delete_job, timeout=timeout)
         except Exception as ex:
